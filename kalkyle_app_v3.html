@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KalkyleApp v3</title>
+  <style>
+    :root {
+      --bg: #f3f5f9;
+      --card: #ffffff;
+      --text: #18212f;
+      --muted: #667085;
+      --line: #dbe1ea;
+      --accent: #1d4ed8;
+      --accent-soft: #dbeafe;
+      --good: #166534;
+      --good-soft: #dcfce7;
+      --warn: #a16207;
+      --warn-soft: #fef3c7;
+      --bad: #b91c1c;
+      --bad-soft: #fee2e2;
+      --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #eef2ff 0%, var(--bg) 220px);
+      color: var(--text);
+    }
+    .app {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 16px 16px 120px;
+    }
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    h1, h2, h3 { margin: 0; }
+    h1 { font-size: 28px; }
+    h2 { font-size: 20px; margin-bottom: 12px; }
+    .sub { color: var(--muted); margin-top: 6px; }
+    .actions, .chip-row, .quick-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    button, .button-like {
+      border: none;
+      border-radius: 14px;
+      background: var(--accent);
+      color: white;
+      padding: 12px 16px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.06);
+    }
+    button.secondary { background: #0f172a; }
+    button.ghost, .button-like.ghost {
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+    button.small-btn, .button-like.small-btn { padding: 9px 12px; font-size: 14px; border-radius: 12px; }
+    button.danger { background: var(--bad); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+    .span-12 { grid-column: span 12; }
+    .span-8 { grid-column: span 8; }
+    .span-7 { grid-column: span 7; }
+    .span-6 { grid-column: span 6; }
+    .span-5 { grid-column: span 5; }
+    .span-4 { grid-column: span 4; }
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(219,225,234,0.85);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .section-note {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+    .fields, .fields-3, .fields-4 {
+      display: grid;
+      gap: 12px;
+    }
+    .fields { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .fields-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .fields-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    label { font-size: 14px; color: var(--muted); font-weight: 700; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 13px 14px;
+      font-size: 16px;
+      background: white;
+      color: var(--text);
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    }
+    textarea { min-height: 92px; resize: vertical; }
+    .mobile-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      background: #eef2ff;
+      color: #3730a3;
+    }
+    .pill.good { background: var(--good-soft); color: var(--good); }
+    .pill.warn { background: var(--warn-soft); color: var(--warn); }
+    .pill.bad { background: var(--bad-soft); color: var(--bad); }
+    .quick-card {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 16px;
+      padding: 14px;
+      margin-top: 14px;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 12px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: #fbfcfe;
+    }
+    .stat .label { color: var(--muted); font-size: 13px; margin-bottom: 6px; font-weight: 700; }
+    .stat .value { font-size: 22px; font-weight: 800; }
+    .stat.good { background: var(--good-soft); border-color: #bbf7d0; color: var(--good); }
+    .stat.warn { background: var(--warn-soft); border-color: #fde68a; color: var(--warn); }
+    .stat.bad { background: var(--bad-soft); border-color: #fecaca; color: var(--bad); }
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0,1fr));
+      gap: 10px;
+    }
+    .template-btn {
+      text-align: left;
+      min-height: 86px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-radius: 16px;
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--line);
+      box-shadow: none;
+      padding: 14px;
+    }
+    .template-btn strong { font-size: 15px; }
+    .template-btn span { font-size: 12px; color: var(--muted); }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 920px; background: white; }
+    th, td {
+      padding: 10px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+      font-size: 14px;
+    }
+    th { background: #f8fafc; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    tr:last-child td { border-bottom: none; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: #fff;
+    }
+    .history-item p, .history-item h3 { margin: 0 0 6px; }
+    .offer-preview {
+      border: 1px dashed #cbd5e1;
+      border-radius: 16px;
+      padding: 18px;
+      background: white;
+      line-height: 1.65;
+    }
+    .footerbar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.94);
+      backdrop-filter: blur(14px);
+      border-top: 1px solid var(--line);
+      z-index: 20;
+    }
+    .footerinner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0,1fr));
+      gap: 10px;
+      align-items: center;
+    }
+    .footerstat {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+    .footerstat .label { color: var(--muted); font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+    .footerstat .value { font-weight: 800; font-size: 18px; }
+    .muted { color: var(--muted); }
+    .hide-mobile { display: block; }
+
+    .inline-tools {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .customer-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fff;
+      margin-bottom: 10px;
+    }
+    .customer-card h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+    }
+    .customer-card p {
+      margin: 3px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .mini-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .mini-actions button { flex: 1 1 120px; }
+    .list-divider {
+      height: 1px;
+      background: var(--line);
+      margin: 14px 0;
+    }
+
+
+    @media (max-width: 980px) {
+      .span-8, .span-7, .span-6, .span-5, .span-4 { grid-column: span 12; }
+      .fields, .fields-3, .fields-4, .stat-grid, .template-grid, .footerinner { grid-template-columns: 1fr; }
+      .hide-mobile { display: none; }
+      .app { padding-bottom: 170px; }
+      .card { padding: 16px; }
+      h1 { font-size: 24px; }
+      button { width: 100%; }
+      .actions { width: 100%; }
+      .actions button { flex: 1 1 100%; }
+      .template-btn { min-height: auto; }
+      .footerstat .value { font-size: 16px; }
+    }
+
+    @media print {
+      .topbar, .card:not(.printable), .footerbar { display: none !important; }
+      body, .app { background: white; padding: 0; }
+      .offer-preview { border: none; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div>
+        <h1>KalkyleApp v3</h1>
+        <div class="sub">Med kunderegister, lagrede kalkyler og rask åpning av tidligere jobber.</div>
+      </div>
+      <div class="actions">
+        <button onclick="saveEstimate()">Lagre kalkyle</button>
+        <button class="secondary" onclick="window.print()">Skriv ut / PDF</button>
+        <button class="ghost" onclick="newEstimate()">Ny kalkyle</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <section class="card span-8 printable">
+        <h2>1. Grunninfo</h2>
+        <div class="fields">
+          <div class="field"><label>Prosjektnavn</label><input id="projectName" placeholder="F.eks. Terrasse hos Hansen" /></div>
+          <div class="field"><label>Kunde</label><input id="customerName" placeholder="Navn på kunde" /></div>
+          <div class="field"><label>Velg lagret kunde</label>
+            <select id="customerSelect" onchange="fillCustomerFromSelect(this.value)">
+              <option value="">Velg kunde fra register</option>
+            </select>
+          </div>
+          <div class="field"><label>Telefon</label><input id="customerPhone" placeholder="Telefonnummer" /></div>
+          <div class="field"><label>E-post</label><input id="customerEmail" placeholder="E-post" /></div>
+          <div class="field"><label>Adresse</label><input id="address" placeholder="Adresse" /></div>
+          <div class="field"><label>Jobbtype</label>
+            <select id="jobType">
+              <option value="Terrasse">Terrasse</option>
+              <option value="Lettvegg">Lettvegg</option>
+              <option value="Skifte vindu">Skifte vindu</option>
+              <option value="Gipse rom">Gipse rom</option>
+              <option value="Legge gulv">Legge gulv</option>
+              <option value="Annet">Annet</option>
+            </select>
+          </div>
+          <div class="field full"><label>Beskrivelse</label><textarea id="description" placeholder="Kort beskrivelse av jobben"></textarea></div>
+        </div>
+        <div class="inline-tools">
+          <button class="ghost small-btn" onclick="saveCustomer()">Lagre kunde</button>
+          <button class="ghost small-btn" onclick="clearCustomerFields()">Tøm kundeinfo</button>
+        </div>
+      </section>
+
+      <aside class="card span-4">
+        <h2>Rask status</h2>
+        <div class="section-note">Denne boksen er laget for å kunne leses raskt ute på jobb.</div>
+        <div class="mobile-stack">
+          <span id="marginBadge" class="pill">Margin 0 %</span>
+          <span class="pill" id="difficultyBadge">Normal jobb</span>
+        </div>
+        <div class="stat-grid" id="dashboardStats"></div>
+      </aside>
+
+      <section class="card span-12">
+        <h2>2. Standardoppsett og maler</h2>
+        <div class="section-note">Sett standardverdier én gang. Du kan også bruke ferdige maler for vanlige jobber.</div>
+        <div class="fields-4">
+          <div class="field"><label>Standard timepris</label><input id="defaultHourlyRate" type="number" min="0" step="1" value="850" /></div>
+          <div class="field"><label>Standard intern timekost</label><input id="defaultInternalRate" type="number" min="0" step="1" value="450" /></div>
+          <div class="field"><label>Standard materialpåslag %</label><input id="defaultMarkup" type="number" min="0" step="1" value="18" /></div>
+          <div class="field"><label>Standard kjøring</label><input id="defaultDriving" type="number" min="0" step="1" value="250" /></div>
+        </div>
+        <div class="row-actions" style="margin-top:12px; margin-bottom:14px;">
+          <button class="ghost small-btn" onclick="applyDefaultsToEstimate()">Bruk standardverdier på denne kalkylen</button>
+          <button class="ghost small-btn" onclick="saveDefaults()">Lagre standardverdier på denne enheten</button>
+        </div>
+        <div class="template-grid">
+          <button class="template-btn" onclick="applyTemplateByName('Terrasse')"><strong>Terrasse</strong><span>Bjelkelag, bord, skruer</span></button>
+          <button class="template-btn" onclick="applyTemplateByName('Lettvegg')"><strong>Lettvegg</strong><span>Stendere, isolasjon, gips</span></button>
+          <button class="template-btn" onclick="applyTemplateByName('Skifte vindu')"><strong>Skifte vindu</strong><span>Vindu, list, fug</span></button>
+          <button class="template-btn" onclick="applyTemplateByName('Gipse rom')"><strong>Gipse rom</strong><span>Gips, skruer, sparkel</span></button>
+          <button class="template-btn" onclick="applyTemplateByName('Legge gulv')"><strong>Legge gulv</strong><span>Gulv, underlag, list</span></button>
+        </div>
+      </section>
+
+      <section class="card span-7">
+        <h2>3. Arbeid</h2>
+        <div class="fields-4">
+          <div class="field"><label>Antall personer</label><input id="workers" type="number" min="1" step="1" value="1" /></div>
+          <div class="field"><label>Timer per person</label><input id="hoursPerWorker" type="number" min="0" step="0.5" value="8" /></div>
+          <div class="field"><label>Intern timekost (kr)</label><input id="internalRate" type="number" min="0" step="1" value="450" /></div>
+          <div class="field"><label>Timepris kunde (kr)</label><input id="hourlyRate" type="number" min="0" step="1" value="850" /></div>
+          <div class="field"><label>Vanskelighetsgrad</label>
+            <select id="difficulty">
+              <option value="1">Enkel</option>
+              <option value="1.1" selected>Normal</option>
+              <option value="1.25">Vanskelig</option>
+              <option value="1.4">Svært vanskelig</option>
+            </select>
+          </div>
+          <div class="field"><label>Usikkerhet %</label><input id="uncertainty" type="number" min="0" step="1" value="10" /></div>
+          <div class="field full">
+            <label>Hurtigvalg</label>
+            <div class="quick-actions">
+              <button type="button" class="ghost small-btn" onclick="adjustHours(2)">+2 timer</button>
+              <button type="button" class="ghost small-btn" onclick="adjustHourlyRate(50)">+50 kr/t</button>
+              <button type="button" class="ghost small-btn" onclick="setDifficulty(1.25, 'Vanskelig')">Vanskelig jobb</button>
+              <button type="button" class="ghost small-btn" onclick="addUncertainty(5)">+5 % usikkerhet</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card span-5">
+        <h2>4. Andre kostnader</h2>
+        <div class="fields">
+          <div class="field"><label>Kjøring</label><input class="otherCost" data-key="driving" type="number" min="0" step="1" value="250" /></div>
+          <div class="field"><label>Bom / parkering</label><input class="otherCost" data-key="parking" type="number" min="0" step="1" value="0" /></div>
+          <div class="field"><label>Verktøyslitasje</label><input class="otherCost" data-key="tools" type="number" min="0" step="1" value="0" /></div>
+          <div class="field"><label>Maskinleie</label><input class="otherCost" data-key="rental" type="number" min="0" step="1" value="0" /></div>
+          <div class="field"><label>Avfall / deponi</label><input class="otherCost" data-key="waste" type="number" min="0" step="1" value="0" /></div>
+          <div class="field"><label>UE / innleid hjelp</label><input class="otherCost" data-key="subcontractor" type="number" min="0" step="1" value="0" /></div>
+          <div class="field full"><label>Diverse / rigg / drift</label><input class="otherCost" data-key="misc" type="number" min="0" step="1" value="0" /></div>
+        </div>
+      </section>
+
+      <section class="card span-12">
+        <h2>5. Materialer</h2>
+        <div class="section-note">Linjene arver standardpåslag som utgangspunkt. På mobil kan du scrolle sidelengs i tabellen.</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Navn</th>
+                <th>Antall</th>
+                <th>Enhet</th>
+                <th>Innkjøpspris</th>
+                <th>Svinn %</th>
+                <th>Påslag %</th>
+                <th>Kost</th>
+                <th>Salg</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="materialsBody"></tbody>
+          </table>
+        </div>
+        <div class="row-actions">
+          <button class="ghost small-btn" onclick="addMaterialRow()">+ Legg til materiale</button>
+          <button class="ghost small-btn" onclick="quickMarkup(5)">+5 % påslag alle</button>
+          <button class="ghost small-btn" onclick="quickMarkup(10)">+10 % påslag alle</button>
+          <button class="ghost small-btn" onclick="copyLastMaterial()">Kopier siste linje</button>
+        </div>
+      </section>
+
+      <section class="card span-6">
+        <h2>6. Oppsummering</h2>
+        <div class="stat-grid" id="summaryStats"></div>
+        <div class="quick-card">
+          <strong>Margin-guide</strong>
+          <div class="section-note" style="margin-top:6px; margin-bottom:0;">
+            Grønn = sterk jobb, gul = må vurderes, rød = tynn margin.
+          </div>
+        </div>
+      </section>
+
+      <section class="card span-6 printable">
+        <h2>7. Tilbud</h2>
+        <div class="fields">
+          <div class="field"><label>Gyldig i dager</label><input id="validDays" type="number" value="14" /></div>
+          <div class="field"><label>Kontaktperson / signatur</label><input id="signature" value="Thomas Solberg" /></div>
+          <div class="field full"><label>Hva er inkludert</label><textarea id="included">Arbeid, materialer og normal opprydding.</textarea></div>
+          <div class="field full"><label>Hva er ikke inkludert</label><textarea id="excluded">Ekstraarbeid utover beskrevet omfang, skjulte feil og andre fag dersom ikke spesifisert.</textarea></div>
+          <div class="field full"><label>Forbehold</label><textarea id="terms">Pris gjelder for beskrevet omfang. Endringer eller tillegg prises separat etter avtale.</textarea></div>
+        </div>
+      </section>
+
+      <section class="card span-8 printable">
+        <h2>Tilbudsvisning</h2>
+        <div id="offerPreview" class="offer-preview"></div>
+      </section>
+
+      <aside class="card span-4">
+        <h2>Kunder og kalkyler</h2>
+        <div class="section-note">Alt lagres lokalt i nettleseren på denne enheten.</div>
+        <h3 style="margin-bottom:8px;">Kunderegister</h3>
+        <div id="customerList"></div>
+        <div class="list-divider"></div>
+        <h3 style="margin-bottom:8px;">Lagrede kalkyler</h3>
+        <div id="historyList"></div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="footerbar">
+    <div class="footerinner">
+      <div class="footerstat"><div class="label">Kostpris</div><div class="value" id="footerCost">0 kr</div></div>
+      <div class="footerstat"><div class="label">Salg eks. mva</div><div class="value" id="footerSales">0 kr</div></div>
+      <div class="footerstat"><div class="label">Fortjeneste</div><div class="value" id="footerProfit">0 kr</div></div>
+      <div class="footerstat"><div class="label">Margin</div><div class="value" id="footerMargin">0 %</div></div>
+      <div><button style="width:100%" onclick="window.print()">Skriv ut / PDF</button></div>
+    </div>
+  </div>
+
+  <script>
+    const templates = {
+      'Terrasse': {
+        projectName: 'Terrasse prosjekt',
+        description: 'Bygging av terrasse med bjelkelag, terrassebord og festemidler.',
+        workers: 2,
+        hoursPerWorker: 16,
+        internalRate: 450,
+        hourlyRate: 850,
+        difficulty: 1.1,
+        uncertainty: 10,
+        materials: [
+          { name: '48x148 konstruksjonsvirke', qty: 35, unit: 'stk', purchase: 129, waste: 8, markup: 18 },
+          { name: 'Terrassebord 28x120', qty: 90, unit: 'lm', purchase: 38, waste: 10, markup: 18 },
+          { name: 'Terrasseskruer', qty: 8, unit: 'pk', purchase: 165, waste: 0, markup: 20 }
+        ],
+        otherCosts: { driving: 450, parking: 0, tools: 250, rental: 0, waste: 600, subcontractor: 0, misc: 500 }
+      },
+      'Lettvegg': {
+        projectName: 'Lettvegg prosjekt',
+        description: 'Oppsetting av lettvegg med stendere, isolasjon og gips.',
+        workers: 1,
+        hoursPerWorker: 10,
+        internalRate: 450,
+        hourlyRate: 850,
+        difficulty: 1.1,
+        uncertainty: 8,
+        materials: [
+          { name: '48x98 stendere', qty: 20, unit: 'stk', purchase: 78, waste: 5, markup: 18 },
+          { name: 'Gipsplater', qty: 12, unit: 'stk', purchase: 129, waste: 8, markup: 18 },
+          { name: 'Isolasjon', qty: 18, unit: 'm²', purchase: 72, waste: 5, markup: 15 }
+        ],
+        otherCosts: { driving: 250, parking: 0, tools: 150, rental: 0, waste: 250, subcontractor: 0, misc: 200 }
+      },
+      'Skifte vindu': {
+        projectName: 'Vindusbytte',
+        description: 'Demontering av eksisterende vindu og montering av nytt vindu med listing og fuging.',
+        workers: 1,
+        hoursPerWorker: 8,
+        internalRate: 450,
+        hourlyRate: 900,
+        difficulty: 1.25,
+        uncertainty: 12,
+        materials: [
+          { name: 'Vindu', qty: 1, unit: 'stk', purchase: 5800, waste: 0, markup: 15 },
+          { name: 'Fug/skum', qty: 3, unit: 'stk', purchase: 129, waste: 0, markup: 20 },
+          { name: 'Listverk', qty: 12, unit: 'lm', purchase: 32, waste: 8, markup: 18 }
+        ],
+        otherCosts: { driving: 250, parking: 0, tools: 150, rental: 0, waste: 300, subcontractor: 0, misc: 250 }
+      },
+      'Gipse rom': {
+        projectName: 'Gipsing av rom',
+        description: 'Montering av gipsplater med standard sparkling som opsjon.',
+        workers: 2,
+        hoursPerWorker: 12,
+        internalRate: 450,
+        hourlyRate: 850,
+        difficulty: 1.1,
+        uncertainty: 10,
+        materials: [
+          { name: 'Gipsplater', qty: 30, unit: 'stk', purchase: 129, waste: 10, markup: 18 },
+          { name: 'Gipsskruer', qty: 6, unit: 'pk', purchase: 110, waste: 0, markup: 20 },
+          { name: 'Sparkel', qty: 5, unit: 'sekk', purchase: 179, waste: 5, markup: 18 }
+        ],
+        otherCosts: { driving: 300, parking: 0, tools: 150, rental: 0, waste: 350, subcontractor: 0, misc: 250 }
+      },
+      'Legge gulv': {
+        projectName: 'Gulvlegging',
+        description: 'Legging av nytt gulv med underlag og listing.',
+        workers: 1,
+        hoursPerWorker: 12,
+        internalRate: 450,
+        hourlyRate: 850,
+        difficulty: 1.1,
+        uncertainty: 8,
+        materials: [
+          { name: 'Gulv', qty: 35, unit: 'm²', purchase: 289, waste: 7, markup: 18 },
+          { name: 'Underlag', qty: 35, unit: 'm²', purchase: 28, waste: 5, markup: 18 },
+          { name: 'Listverk', qty: 28, unit: 'lm', purchase: 32, waste: 8, markup: 18 }
+        ],
+        otherCosts: { driving: 250, parking: 0, tools: 100, rental: 0, waste: 250, subcontractor: 0, misc: 150 }
+      }
+    };
+
+    let materials = [];
+    let currentEstimateId = null;
+
+    function currency(value) {
+      return new Intl.NumberFormat('no-NO', { style: 'currency', currency: 'NOK', maximumFractionDigits: 0 }).format(value || 0);
+    }
+    function number(v) { return Number(v) || 0; }
+
+    function defaultSettings() {
+      return {
+        defaultHourlyRate: 850,
+        defaultInternalRate: 450,
+        defaultMarkup: 18,
+        defaultDriving: 250
+      };
+    }
+
+    function getDefaults() {
+      try {
+        return { ...defaultSettings(), ...(JSON.parse(localStorage.getItem('kalkyleapp_defaults') || '{}')) };
+      } catch {
+        return defaultSettings();
+      }
+    }
+
+
+    function getCustomers() {
+      try {
+        return JSON.parse(localStorage.getItem('kalkyleapp_customers') || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function saveCustomers(list) {
+      localStorage.setItem('kalkyleapp_customers', JSON.stringify(list));
+    }
+
+    function getEstimates() {
+      try {
+        return JSON.parse(localStorage.getItem('kalkyleapp_estimates') || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function saveEstimates(list) {
+      localStorage.setItem('kalkyleapp_estimates', JSON.stringify(list));
+    }
+
+    function fillDefaultInputs() {
+      const d = getDefaults();
+      document.getElementById('defaultHourlyRate').value = d.defaultHourlyRate;
+      document.getElementById('defaultInternalRate').value = d.defaultInternalRate;
+      document.getElementById('defaultMarkup').value = d.defaultMarkup;
+      document.getElementById('defaultDriving').value = d.defaultDriving;
+    }
+
+    function saveDefaults() {
+      const d = {
+        defaultHourlyRate: number(document.getElementById('defaultHourlyRate').value),
+        defaultInternalRate: number(document.getElementById('defaultInternalRate').value),
+        defaultMarkup: number(document.getElementById('defaultMarkup').value),
+        defaultDriving: number(document.getElementById('defaultDriving').value)
+      };
+      localStorage.setItem('kalkyleapp_defaults', JSON.stringify(d));
+      alert('Standardverdier lagret på denne enheten.');
+    }
+
+    function applyDefaultsToEstimate() {
+      const d = getDefaults();
+      document.getElementById('hourlyRate').value = d.defaultHourlyRate;
+      document.getElementById('internalRate').value = d.defaultInternalRate;
+      document.querySelector('.otherCost[data-key="driving"]').value = d.defaultDriving;
+      materials = materials.map(item => ({ ...item, markup: number(item.markup) || d.defaultMarkup }));
+      renderMaterials();
+      updateUI();
+    }
+
+    function getOtherCosts() {
+      const costs = {};
+      document.querySelectorAll('.otherCost').forEach(input => costs[input.dataset.key] = number(input.value));
+      return costs;
+    }
+
+    function setOtherCosts(costs) {
+      document.querySelectorAll('.otherCost').forEach(input => {
+        input.value = costs?.[input.dataset.key] ?? 0;
+      });
+    }
+
+    function materialCost(item) {
+      const base = number(item.qty) * number(item.purchase);
+      return base * (1 + number(item.waste) / 100);
+    }
+
+    function materialSale(item) {
+      return materialCost(item) * (1 + number(item.markup) / 100);
+    }
+
+    function marginState(margin) {
+      if (margin >= 25) return 'good';
+      if (margin >= 15) return 'warn';
+      return 'bad';
+    }
+
+    function difficultyLabel(v) {
+      const map = { '1': 'Enkel jobb', '1.1': 'Normal jobb', '1.25': 'Vanskelig jobb', '1.4': 'Svært vanskelig jobb' };
+      return map[String(v)] || 'Valgt nivå';
+    }
+
+    function calculate() {
+      const workers = number(document.getElementById('workers').value);
+      const hoursPerWorker = number(document.getElementById('hoursPerWorker').value);
+      const internalRate = number(document.getElementById('internalRate').value);
+      const hourlyRate = number(document.getElementById('hourlyRate').value);
+      const difficulty = number(document.getElementById('difficulty').value);
+      const uncertainty = number(document.getElementById('uncertainty').value) / 100;
+
+      const totalHours = workers * hoursPerWorker;
+      const laborCost = totalHours * internalRate;
+      const laborSale = totalHours * hourlyRate * difficulty * (1 + uncertainty);
+      const materialsCost = materials.reduce((sum, item) => sum + materialCost(item), 0);
+      const materialsSale = materials.reduce((sum, item) => sum + materialSale(item), 0);
+      const otherCostsObj = getOtherCosts();
+      const otherCosts = Object.values(otherCostsObj).reduce((a, b) => a + number(b), 0);
+      const totalCost = laborCost + materialsCost + otherCosts;
+      const salesExVat = laborSale + materialsSale + otherCosts;
+      const profit = salesExVat - totalCost;
+      const margin = salesExVat > 0 ? (profit / salesExVat) * 100 : 0;
+      const vat = salesExVat * 0.25;
+      const totalIncVat = salesExVat + vat;
+
+      return { totalHours, laborCost, laborSale, materialsCost, materialsSale, otherCosts, totalCost, salesExVat, profit, margin, vat, totalIncVat };
+    }
+
+    function renderMaterials() {
+      const tbody = document.getElementById('materialsBody');
+      tbody.innerHTML = '';
+      materials.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input value="${item.name || ''}" onchange="updateMaterial(${index}, 'name', this.value)" /></td>
+          <td><input type="number" min="0" step="0.1" value="${item.qty ?? 0}" onchange="updateMaterial(${index}, 'qty', this.value)" /></td>
+          <td><input value="${item.unit || ''}" onchange="updateMaterial(${index}, 'unit', this.value)" /></td>
+          <td><input type="number" min="0" step="0.1" value="${item.purchase ?? 0}" onchange="updateMaterial(${index}, 'purchase', this.value)" /></td>
+          <td><input type="number" min="0" step="0.1" value="${item.waste ?? 0}" onchange="updateMaterial(${index}, 'waste', this.value)" /></td>
+          <td><input type="number" min="0" step="0.1" value="${item.markup ?? 0}" onchange="updateMaterial(${index}, 'markup', this.value)" /></td>
+          <td>${currency(materialCost(item))}</td>
+          <td>${currency(materialSale(item))}</td>
+          <td><button class="danger small-btn" onclick="removeMaterial(${index})">Slett</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      updateUI();
+    }
+
+    function updateMaterial(index, key, value) {
+      materials[index][key] = ['name', 'unit'].includes(key) ? value : number(value);
+      renderMaterials();
+    }
+
+    function addMaterialRow(item) {
+      const d = getDefaults();
+      materials.push(item || { name: '', qty: 1, unit: 'stk', purchase: 0, waste: 0, markup: d.defaultMarkup });
+      renderMaterials();
+    }
+
+    function copyLastMaterial() {
+      if (!materials.length) return addMaterialRow();
+      const last = materials[materials.length - 1];
+      materials.push({ ...last });
+      renderMaterials();
+    }
+
+    function removeMaterial(index) {
+      materials.splice(index, 1);
+      renderMaterials();
+    }
+
+    function quickMarkup(inc) {
+      materials = materials.map(item => ({ ...item, markup: number(item.markup) + inc }));
+      renderMaterials();
+    }
+
+    function adjustHours(add) {
+      const el = document.getElementById('hoursPerWorker');
+      el.value = number(el.value) + add;
+      updateUI();
+    }
+
+    function adjustHourlyRate(add) {
+      const el = document.getElementById('hourlyRate');
+      el.value = number(el.value) + add;
+      updateUI();
+    }
+
+    function setDifficulty(value) {
+      document.getElementById('difficulty').value = String(value);
+      updateUI();
+    }
+
+    function addUncertainty(add) {
+      const el = document.getElementById('uncertainty');
+      el.value = number(el.value) + add;
+      updateUI();
+    }
+
+    function updateUI() {
+      const c = calculate();
+      const state = marginState(c.margin);
+      const summary = [
+        ['Arbeid kost', currency(c.laborCost)],
+        ['Arbeid salg', currency(c.laborSale)],
+        ['Materialkost', currency(c.materialsCost)],
+        ['Materialsalg', currency(c.materialsSale)],
+        ['Andre kostnader', currency(c.otherCosts)],
+        ['Kostpris total', currency(c.totalCost)],
+        ['Salgspris eks. mva', currency(c.salesExVat)],
+        ['MVA', currency(c.vat)],
+        ['Pris inkl. mva', currency(c.totalIncVat)],
+        ['Fortjeneste', currency(c.profit)],
+        ['Margin', c.margin.toFixed(1) + ' %']
+      ];
+
+      document.getElementById('summaryStats').innerHTML = summary.map(([label, value]) => `
+        <div class="stat ${label === 'Margin' ? state : ''}">
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('dashboardStats').innerHTML = `
+        <div class="stat"><div class="label">Totale timer</div><div class="value">${c.totalHours.toFixed(1)} t</div></div>
+        <div class="stat"><div class="label">Materiallinjer</div><div class="value">${materials.length}</div></div>
+        <div class="stat ${state}"><div class="label">Margin</div><div class="value">${c.margin.toFixed(1)} %</div></div>
+        <div class="stat"><div class="label">Tilbud inkl. mva</div><div class="value">${currency(c.totalIncVat)}</div></div>
+      `;
+
+      const marginBadge = document.getElementById('marginBadge');
+      marginBadge.className = 'pill ' + state;
+      marginBadge.textContent = 'Margin ' + c.margin.toFixed(1) + ' %';
+
+      document.getElementById('difficultyBadge').textContent = difficultyLabel(document.getElementById('difficulty').value);
+
+      document.getElementById('footerCost').textContent = currency(c.totalCost);
+      document.getElementById('footerSales').textContent = currency(c.salesExVat);
+      document.getElementById('footerProfit').textContent = currency(c.profit);
+      document.getElementById('footerMargin').textContent = c.margin.toFixed(1) + ' %';
+      renderOffer();
+    }
+
+    function getEstimateData() {
+      return {
+        id: currentEstimateId || crypto.randomUUID(),
+        savedAt: new Date().toISOString(),
+        projectName: document.getElementById('projectName').value,
+        customerName: document.getElementById('customerName').value,
+        customerPhone: document.getElementById('customerPhone').value,
+        customerEmail: document.getElementById('customerEmail').value,
+        address: document.getElementById('address').value,
+        jobType: document.getElementById('jobType').value,
+        description: document.getElementById('description').value,
+        workers: number(document.getElementById('workers').value),
+        hoursPerWorker: number(document.getElementById('hoursPerWorker').value),
+        internalRate: number(document.getElementById('internalRate').value),
+        hourlyRate: number(document.getElementById('hourlyRate').value),
+        difficulty: number(document.getElementById('difficulty').value),
+        uncertainty: number(document.getElementById('uncertainty').value),
+        otherCosts: getOtherCosts(),
+        materials,
+        validDays: number(document.getElementById('validDays').value),
+        signature: document.getElementById('signature').value,
+        included: document.getElementById('included').value,
+        excluded: document.getElementById('excluded').value,
+        terms: document.getElementById('terms').value
+      };
+    }
+
+    function loadEstimate(data) {
+      currentEstimateId = data.id || null;
+      document.getElementById('projectName').value = data.projectName || '';
+      document.getElementById('customerName').value = data.customerName || '';
+      document.getElementById('customerPhone').value = data.customerPhone || '';
+      document.getElementById('customerEmail').value = data.customerEmail || '';
+      document.getElementById('address').value = data.address || '';
+      document.getElementById('jobType').value = data.jobType || 'Terrasse';
+      document.getElementById('description').value = data.description || '';
+      document.getElementById('workers').value = data.workers ?? 1;
+      document.getElementById('hoursPerWorker').value = data.hoursPerWorker ?? 8;
+      document.getElementById('internalRate').value = data.internalRate ?? getDefaults().defaultInternalRate;
+      document.getElementById('hourlyRate').value = data.hourlyRate ?? getDefaults().defaultHourlyRate;
+      document.getElementById('difficulty').value = String(data.difficulty ?? 1.1);
+      document.getElementById('uncertainty').value = data.uncertainty ?? 10;
+      setOtherCosts(data.otherCosts || {});
+      materials = Array.isArray(data.materials) ? data.materials : [];
+      document.getElementById('validDays').value = data.validDays ?? 14;
+      document.getElementById('signature').value = data.signature || 'Thomas Solberg';
+      document.getElementById('included').value = data.included || '';
+      document.getElementById('excluded').value = data.excluded || '';
+      document.getElementById('terms').value = data.terms || '';
+      renderMaterials();
+    }
+
+    function saveEstimate() {
+      const payload = getEstimateData();
+      const all = getEstimates();
+      const existingIndex = all.findIndex(item => item.id === payload.id);
+      if (existingIndex >= 0) {
+        all[existingIndex] = payload;
+      } else {
+        all.unshift(payload);
+      }
+      saveEstimates(all.slice(0, 50));
+      currentEstimateId = payload.id;
+      renderHistory();
+      alert(existingIndex >= 0 ? 'Kalkyle oppdatert.' : 'Kalkyle lagret lokalt i nettleseren.');
+    }
+
+    function previewCalc(item) {
+      const totalHours = number(item.workers) * number(item.hoursPerWorker);
+      const laborCost = totalHours * number(item.internalRate);
+      const laborSale = totalHours * number(item.hourlyRate) * number(item.difficulty) * (1 + number(item.uncertainty) / 100);
+      const materialsCost = (item.materials || []).reduce((sum, mat) => sum + ((number(mat.qty) * number(mat.purchase)) * (1 + number(mat.waste) / 100)), 0);
+      const materialsSale = (item.materials || []).reduce((sum, mat) => sum + (((number(mat.qty) * number(mat.purchase)) * (1 + number(mat.waste) / 100)) * (1 + number(mat.markup) / 100)), 0);
+      const otherCosts = Object.values(item.otherCosts || {}).reduce((a, b) => a + number(b), 0);
+      const totalCost = laborCost + materialsCost + otherCosts;
+      const salesExVat = laborSale + materialsSale + otherCosts;
+      const profit = salesExVat - totalCost;
+      const margin = salesExVat > 0 ? (profit / salesExVat) * 100 : 0;
+      return { totalIncVat: salesExVat * 1.25, margin };
+    }
+
+    function renderHistory() {
+      const all = getEstimates();
+      const el = document.getElementById('historyList');
+      if (!all.length) {
+        el.innerHTML = '<p class="muted">Ingen lagrede kalkyler ennå.</p>';
+        return;
+      }
+      el.innerHTML = all.map((item, index) => {
+        const c = previewCalc(item);
+        const date = new Date(item.savedAt).toLocaleString('no-NO');
+        const state = marginState(c.margin);
+        const active = item.id === currentEstimateId ? ' style="box-shadow: inset 0 0 0 2px #1d4ed8;"' : '';
+        return `
+          <div class="history-item"${active}>
+            <div>
+              <h3>${item.projectName || 'Uten navn'}</h3>
+              <p>${item.customerName || 'Ukjent kunde'} · ${item.jobType || 'Jobb'}</p>
+              <p>${date}</p>
+              <p><span class="pill ${state}">${currency(c.totalIncVat)} · ${c.margin.toFixed(1)} %</span></p>
+            </div>
+            <div class="actions" style="align-content:flex-start;">
+              <button class="ghost small-btn" onclick="openHistory(${index})">Åpne</button>
+              <button class="ghost small-btn" onclick="duplicateHistory(${index})">Kopi</button>
+              <button class="danger small-btn" onclick="deleteHistory(${index})">Slett</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openHistory(index) {
+      const all = getEstimates();
+      if (all[index]) {
+        loadEstimate(all[index]);
+        renderHistory();
+      }
+    }
+
+    function duplicateHistory(index) {
+      const all = getEstimates();
+      const item = all[index];
+      if (!item) return;
+      const copy = { ...item, id: crypto.randomUUID(), savedAt: new Date().toISOString(), projectName: (item.projectName || 'Kopi') + ' (kopi)' };
+      all.unshift(copy);
+      saveEstimates(all.slice(0, 50));
+      renderHistory();
+    }
+
+    function deleteHistory(index) {
+      const all = getEstimates();
+      if (all[index]?.id === currentEstimateId) currentEstimateId = null;
+      all.splice(index, 1);
+      saveEstimates(all);
+      renderHistory();
+    }
+
+    function saveCustomer() {
+      const customerName = document.getElementById('customerName').value.trim();
+      if (!customerName) {
+        alert('Legg inn kundenavn først.');
+        return;
+      }
+      const payload = {
+        id: crypto.randomUUID(),
+        name: customerName,
+        phone: document.getElementById('customerPhone').value.trim(),
+        email: document.getElementById('customerEmail').value.trim(),
+        address: document.getElementById('address').value.trim(),
+        lastUsed: new Date().toISOString()
+      };
+      const customers = getCustomers();
+      const existingIndex = customers.findIndex(c => c.name.toLowerCase() === payload.name.toLowerCase());
+      if (existingIndex >= 0) {
+        payload.id = customers[existingIndex].id;
+        customers[existingIndex] = payload;
+      } else {
+        customers.unshift(payload);
+      }
+      saveCustomers(customers.slice(0, 100));
+      renderCustomers();
+      alert(existingIndex >= 0 ? 'Kunde oppdatert.' : 'Kunde lagret.');
+    }
+
+    function clearCustomerFields() {
+      document.getElementById('customerName').value = '';
+      document.getElementById('customerPhone').value = '';
+      document.getElementById('customerEmail').value = '';
+      document.getElementById('address').value = '';
+      document.getElementById('customerSelect').value = '';
+      updateUI();
+    }
+
+    function fillCustomerFromSelect(value) {
+      if (!value) return;
+      const customer = getCustomers().find(c => c.id === value);
+      if (!customer) return;
+      document.getElementById('customerName').value = customer.name || '';
+      document.getElementById('customerPhone').value = customer.phone || '';
+      document.getElementById('customerEmail').value = customer.email || '';
+      document.getElementById('address').value = customer.address || '';
+      updateUI();
+    }
+
+    function selectCustomer(index) {
+      const customer = getCustomers()[index];
+      if (!customer) return;
+      document.getElementById('customerSelect').value = customer.id;
+      fillCustomerFromSelect(customer.id);
+    }
+
+    function deleteCustomer(index) {
+      const customers = getCustomers();
+      customers.splice(index, 1);
+      saveCustomers(customers);
+      renderCustomers();
+    }
+
+    function renderCustomers() {
+      const customers = getCustomers();
+      const list = document.getElementById('customerList');
+      const select = document.getElementById('customerSelect');
+      select.innerHTML = '<option value="">Velg kunde fra register</option>' + customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      if (!customers.length) {
+        list.innerHTML = '<p class="muted">Ingen lagrede kunder ennå.</p>';
+        return;
+      }
+      list.innerHTML = customers.map((customer, index) => `
+        <div class="customer-card">
+          <h3>${customer.name}</h3>
+          <p>${customer.phone || 'Ingen telefon lagret'}</p>
+          <p>${customer.email || 'Ingen e-post lagret'}</p>
+          <p>${customer.address || 'Ingen adresse lagret'}</p>
+          <div class="mini-actions">
+            <button class="ghost small-btn" onclick="selectCustomer(${index})">Bruk</button>
+            <button class="danger small-btn" onclick="deleteCustomer(${index})">Slett</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function applyTemplateByName(name) {
+      document.getElementById('jobType').value = name;
+      const t = templates[name];
+      if (!t) return;
+      loadEstimate({
+        projectName: t.projectName,
+        customerName: document.getElementById('customerName').value,
+        customerPhone: document.getElementById('customerPhone').value,
+        customerEmail: document.getElementById('customerEmail').value,
+        address: document.getElementById('address').value,
+        jobType: name,
+        description: t.description,
+        workers: t.workers,
+        hoursPerWorker: t.hoursPerWorker,
+        internalRate: t.internalRate,
+        hourlyRate: t.hourlyRate,
+        difficulty: t.difficulty,
+        uncertainty: t.uncertainty,
+        materials: t.materials.map(m => ({ ...m })),
+        otherCosts: { ...t.otherCosts },
+        validDays: 14,
+        signature: document.getElementById('signature').value || 'Thomas Solberg',
+        included: 'Arbeid, materialer og normal opprydding.',
+        excluded: 'Ekstraarbeid utover beskrevet omfang, skjulte feil og andre fag dersom ikke spesifisert.',
+        terms: 'Pris gjelder for beskrevet omfang. Endringer eller tillegg prises separat etter avtale.'
+      });
+    }
+
+    function newEstimate() {
+      currentEstimateId = null;
+      const d = getDefaults();
+      loadEstimate({
+        projectName: '', customerName: '', customerPhone: '', customerEmail: '', address: '', jobType: 'Terrasse', description: '',
+        workers: 1, hoursPerWorker: 8, internalRate: d.defaultInternalRate, hourlyRate: d.defaultHourlyRate, difficulty: 1.1, uncertainty: 10,
+        materials: [], otherCosts: { driving: d.defaultDriving, parking: 0, tools: 0, rental: 0, waste: 0, subcontractor: 0, misc: 0 },
+        validDays: 14, signature: 'Thomas Solberg', included: 'Arbeid, materialer og normal opprydding.',
+        excluded: 'Ekstraarbeid utover beskrevet omfang, skjulte feil og andre fag dersom ikke spesifisert.',
+        terms: 'Pris gjelder for beskrevet omfang. Endringer eller tillegg prises separat etter avtale.'
+      });
+    }
+
+    function renderOffer() {
+      const c = calculate();
+      const today = new Date();
+      const validDays = number(document.getElementById('validDays').value);
+      const validTo = new Date(today.getTime() + validDays * 24 * 60 * 60 * 1000).toLocaleDateString('no-NO');
+      const projectName = document.getElementById('projectName').value || 'Uten prosjektnavn';
+      const customerName = document.getElementById('customerName').value || 'Kunde';
+      const customerPhone = document.getElementById('customerPhone').value || '';
+      const customerEmail = document.getElementById('customerEmail').value || '';
+      const address = document.getElementById('address').value || 'Adresse ikke oppgitt';
+      const description = document.getElementById('description').value || 'Beskrivelse kommer her.';
+      const included = document.getElementById('included').value || '-';
+      const excluded = document.getElementById('excluded').value || '-';
+      const terms = document.getElementById('terms').value || '-';
+      const signature = document.getElementById('signature').value || 'Signatur';
+      document.getElementById('offerPreview').innerHTML = `
+        <h2 style="margin-top:0">Tilbud</h2>
+        <p><strong>Dato:</strong> ${today.toLocaleDateString('no-NO')}<br>
+        <strong>Kunde:</strong> ${customerName}<br>
+        ${customerPhone ? `<strong>Telefon:</strong> ${customerPhone}<br>` : ''}
+        ${customerEmail ? `<strong>E-post:</strong> ${customerEmail}<br>` : ''}
+        <strong>Adresse:</strong> ${address}<br>
+        <strong>Prosjekt:</strong> ${projectName}</p>
+        <p><strong>Beskrivelse av arbeid:</strong><br>${description}</p>
+        <p><strong>Inkludert:</strong><br>${included.replaceAll('\n','<br>')}</p>
+        <p><strong>Ikke inkludert:</strong><br>${excluded.replaceAll('\n','<br>')}</p>
+        <p><strong>Pris eks. mva:</strong> ${currency(c.salesExVat)}<br>
+        <strong>MVA 25 %:</strong> ${currency(c.vat)}<br>
+        <strong>Totalpris inkl. mva:</strong> ${currency(c.totalIncVat)}</p>
+        <p><strong>Forbehold:</strong><br>${terms.replaceAll('\n','<br>')}</p>
+        <p>Tilbudet er gyldig til <strong>${validTo}</strong>.</p>
+        <p>Med vennlig hilsen<br><strong>${signature}</strong></p>
+      `;
+    }
+
+    document.addEventListener('input', (e) => {
+      if (e.target.matches('input, select, textarea')) updateUI();
+    });
+    document.addEventListener('change', (e) => {
+      if (e.target.matches('input, select, textarea')) updateUI();
+    });
+
+    fillDefaultInputs();
+    renderCustomers();
+    renderHistory();
+    newEstimate();
+    addMaterialRow();
+    updateUI();
+  </script>
+</body>
+</html>
