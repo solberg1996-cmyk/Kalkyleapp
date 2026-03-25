@@ -394,18 +394,34 @@ let state = loadState();
       renderProjectView();
     }
 
-    function searchPriceCatalog(query){
-      const q = (query||'').trim().toLowerCase();
-      if(!q) return [];
-      const exact = [];
-      const partial = [];
-      state.priceCatalog.forEach(item => {
-        const hay = `${item.itemNo} ${item.productName} ${item.description} ${item.name}`.toLowerCase();
-        if(item.itemNo.toLowerCase() === q) exact.push(item);
-        else if(hay.includes(q)) partial.push(item);
-      });
-      return exact.concat(partial).slice(0, 15);
+function searchPriceCatalog(query){
+  const q = (query||'').trim().toLowerCase();
+  if(!q) return [];
+
+  const exact = [];
+  const starts = [];
+  const contains = [];
+
+  state.priceCatalog.forEach(item => {
+    const itemNo = (item.itemNo||'').toLowerCase();
+    const name = (item.productName||item.name||'').toLowerCase();
+
+    if(itemNo === q){
+      exact.push(item);
     }
+    else if(itemNo.startsWith(q)){
+      starts.push(item);
+    }
+    else if(name.startsWith(q)){
+      starts.push(item);
+    }
+    else if(name.includes(q)){
+      contains.push(item);
+    }
+  });
+
+  return [...exact, ...starts, ...contains].slice(0,20);
+}
 
     function renderPriceSearchResults(query){
       const host = $('#priceSearchResults');
