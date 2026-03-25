@@ -440,17 +440,13 @@ function searchPriceCatalog(query){
         return;
       }
       host.innerHTML = results.map(item => `
-        <div class="item">
-          <div>
-            <h4>${escapeHtml(item.productName || item.name)}</h4>
-            <p>${escapeHtml(item.description || '')}</p>
-            <div class="pills" style="margin-top:8px">
-              <span class="pill">Varenr: ${escapeHtml(item.itemNo)}</span>
-              <span class="pill">Enhet: ${escapeHtml(item.unit || '-')}</span>
-              <span class="pill">Din pris: ${currency(item.userPrice)}</span>
-              ${item.regularPrice ? `<span class="pill">Ordinær: ${currency(item.regularPrice)}</span>` : ''}
-              ${item.discountPercent ? `<span class="pill">Rabatt: ${item.discountPercent}%</span>` : ''}
-            </div>
+        <div class="pills" style="margin-top:8px">
+  <span class="pill">Varenr: ${escapeHtml(item.itemNo || '-')}</span>
+  <span class="pill">Enhet: ${escapeHtml(item.unit || '-')}</span>
+  <span class="pill">Din pris: ${currency(item.userPrice || 0)}</span>
+  ${item.regularPrice ? `<span class="pill">Ord. pris: ${currency(item.regularPrice)}</span>` : ''}
+  ${item.discountPercent ? `<span class="pill">Rabatt: ${item.discountPercent}%</span>` : ''}
+</div>
           </div>
           <div class="inline-actions">
             <button class="btn small secondary" onclick="toggleFavoriteCatalog('${escapeHtml(item.id)}')">${isFavoriteCatalog(item.id) ? '★ Favoritt' : '☆ Favoritt'}</button>
@@ -866,16 +862,17 @@ function searchPriceCatalog(query){
           <div id="priceSearchResults" class="list" style="margin-top:12px"></div>
         </div>
 
+        <div class="section-head" style="margin-top:14px"><div class="section-title">Favoritter fra prisfil</div></div>
+        <div class="package-grid">
+          ${renderQuickCatalogButtons(getFavoriteCatalogItems(), 'Ingen favoritter valgt enda.')}
+        </div>
+        
         <div class="section-head" style="margin-top:14px"><div class="section-title">Sist brukte varer</div></div>
         <div class="package-grid">
           ${renderQuickCatalogButtons(getRecentCatalogItems(), 'Ingen varer brukt fra prisfil enda.')}
         </div>
 
-        <div class="section-head" style="margin-top:14px"><div class="section-title">Favoritter fra prisfil</div></div>
-        <div class="package-grid">
-          ${renderQuickCatalogButtons(getFavoriteCatalogItems(), 'Ingen favoritter valgt enda.')}
-        </div>
-
+    
         <div class="section-head" style="margin-top:14px"><div class="section-title">Favorittmaterialer</div></div>
         <div class="toolbar">
           ${favoriteMaterials.map((m,idx)=>`<button class="tag-btn" onclick="addFavoriteMaterial(${idx})">${m.name}</button>`).join('')}
@@ -1267,6 +1264,7 @@ function searchPriceCatalog(query){
         regularPrice:item.regularPrice || 0,
         discountPercent:item.discountPercent || 0
       });
+      rememberRecentCatalog(id);
       persistAndRenderProject();
       const searchInput = $('#priceSearchInput');
       if(searchInput) searchInput.value='';
