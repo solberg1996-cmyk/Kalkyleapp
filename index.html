@@ -1642,14 +1642,24 @@
       // Build full HTML with print bar
       const toEmail=cust&&cust.email?cust.email:'';
       const subject='Tilbud - '+(p.name||'Prosjekt')+(co&&co.name?' - '+co.name:'');
-      const mailtoLink='mailto:'+encodeURIComponent(toEmail)+'?subject='+encodeURIComponent(subject);
+      const body =
+  'Hei,\n\n' +
+  'Vedlagt finner du tilbud på ' + (p.name || 'prosjekt') + '.\n\n' +
+  'Gi gjerne tilbakemelding dersom du har spørsmål.\n\n' +
+  'Mvh\n' +
+  (co.name || '');
+
+const mailtoLink =
+  'mailto:' + encodeURIComponent(toEmail) +
+  '?subject=' + encodeURIComponent(subject) +
+  '&body=' + encodeURIComponent(body);
 
       const html='<!DOCTYPE html><html lang="no"><head><meta charset="UTF-8"><title>Tilbud</title><style>'+css+'</style></head><body>'
         +'<div class="no-print" style="background:#1a1a1a;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:99;flex-wrap:wrap">'
           +'<div style="flex:1;font-size:13px;line-height:1.6">'
             +'<strong>Steg 1:</strong> Lagre som PDF 👉 '
             +'<button onclick="window.print()" style="background:#0a84ff;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:700;cursor:pointer;font-size:13px">🖨️ Lagre som PDF</button>'
-            +'&nbsp;&nbsp;<strong>Steg 2:</strong> Send til kunde 👉 '
+            +'&nbsp;&nbsp;<strong>Steg 2:</strong> 📧 Send tilbud '
             +'<a href="'+mailtoLink+'" style="background:#34c759;color:#fff;border-radius:6px;padding:6px 14px;font-weight:700;cursor:pointer;font-size:13px;text-decoration:none;display:inline-block">📧 Åpne e-post</a>'
           +'</div>'
         +'</div>'
@@ -1658,6 +1668,9 @@
       const blob=new Blob([html],{type:'text/html'});
       const url=URL.createObjectURL(blob);
       window.open(url,'_blank');
+      setTimeout(function(){
+  window.location.href = mailtoLink;
+}, 800);
       setTimeout(function(){URL.revokeObjectURL(url);},60000);
     };
 
