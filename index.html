@@ -1666,12 +1666,22 @@ const mailtoLink =
         +doc.innerHTML+'</body></html>';
 
       const blob=new Blob([html],{type:'text/html'});
-      const url=URL.createObjectURL(blob);
-      window.open(url,'_blank');
-      setTimeout(function(){
-  window.location.href = mailtoLink;
-}, 800);
-      setTimeout(function(){URL.revokeObjectURL(url);},60000);
+const url=URL.createObjectURL(blob);
+
+const win = window.open(url,'_blank');
+
+if(win){
+  setTimeout(function(){
+    const a=document.createElement('a');
+    a.href=mailtoLink;
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }, 1200);
+}
+
+setTimeout(function(){URL.revokeObjectURL(url);},60000);
     };
 
     
