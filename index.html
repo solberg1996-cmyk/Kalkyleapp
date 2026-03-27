@@ -1637,7 +1637,7 @@
       const co=state.company||{};
       const doc=document.getElementById('offerPreviewDoc'); if(!doc) return;
       const color=(co&&co.color)||'#2e75b6';
-      const css=getOfferCSS(color)+'body{padding:30px 40px}@media print{.no-print{display:none}}';
+      const css=getOfferCSS(color)+'body{padding:30px 40px}.no-print{display:flex}@media print{.no-print{display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important}body{padding:30px 40px!important;margin:0!important}}';
 
       // Build full HTML with print bar
       const toEmail=cust&&cust.email?cust.email:'';
@@ -1655,14 +1655,6 @@ const mailtoLink =
   '&body=' + encodeURIComponent(body);
 
       const html='<!DOCTYPE html><html lang="no"><head><meta charset="UTF-8"><title>Tilbud</title><style>'+css+'</style></head><body>'
-        +'<div class="no-print" style="background:#1a1a1a;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:99;flex-wrap:wrap">'
-          +'<div style="flex:1;font-size:13px;line-height:1.6">'
-            +'<strong>Steg 1:</strong> Lagre som PDF 👉 '
-            +'<button onclick="window.print()" style="background:#0a84ff;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:700;cursor:pointer;font-size:13px">🖨️ Lagre som PDF</button>'
-            +'&nbsp;&nbsp;<strong>Steg 2:</strong> 📧 Send tilbud '
-            +'<a href="'+mailtoLink+'" style="background:#34c759;color:#fff;border-radius:6px;padding:6px 14px;font-weight:700;cursor:pointer;font-size:13px;text-decoration:none;display:inline-block">📧 Åpne e-post</a>'
-          +'</div>'
-        +'</div>'
         +doc.innerHTML+'</body></html>';
 
       const blob=new Blob([html],{type:'text/html'});
