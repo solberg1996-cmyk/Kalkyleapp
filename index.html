@@ -1291,6 +1291,19 @@
 ">
   📧 Send tilbud
 </button>
+        <button onclick="downloadOfferPDF()" style="
+  background:#34c759;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:12px 18px;
+  font-weight:700;
+  cursor:pointer;
+  font-size:14px;
+  margin-top:10px;
+">
+  ⬇️ Last ned PDF
+</button>
         
         +'</div>'
       +'</div>';
@@ -1695,6 +1708,61 @@ setTimeout(function(){URL.revokeObjectURL(url);},60000);
     
 
         window.openOfferFullPreview=function(){
+        
+        window.downloadOfferPDF=function(){
+  const p=getProject(currentProjectId); if(!p) return;
+  const co=state.company||{};
+  const doc=document.getElementById('offerPreviewDoc'); if(!doc) return;
+
+  const color=co.color||'#2e75b6';
+  const css=getOfferCSS(color);
+
+  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'+css+'</style></head><body style="padding:30px 40px">'
+    +doc.innerHTML+
+    '</body></html>';
+
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+
+  // Filnavn
+  const name=(p.name||'prosjekt').replace(/[^\wæøåÆØÅ0-9]/g,'_');
+  const filename='Tilbud_'+name+'.pdf';
+
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(function(){URL.revokeObjectURL(url);},10000);
+};
+          window.sendOfferNow=function(){
+  const p=getProject(currentProjectId); if(!p) return;
+  const cust=getCustomer(p.customerId);
+  const co=state.company||{};
+
+  const toEmail=cust&&cust.email?cust.email:'';
+  const subject='Tilbud - '+(p.name||'Prosjekt')+(co.name?' - '+co.name:'');
+
+  const body =
+    'Hei,\n\n' +
+    'Vedlagt finner du tilbud på ' + (p.name||'prosjekt') + '.\n\n' +
+    'Gi gjerne tilbakemelding dersom du har spørsmål.\n\n' +
+    'Mvh\n' +
+    (co.name||'');
+
+  const mailtoLink =
+    'mailto:' + encodeURIComponent(toEmail) +
+    '?subject=' + encodeURIComponent(subject) +
+    '&body=' + encodeURIComponent(body);
+
+  openOfferFullPreview();
+
+  setTimeout(function(){
+    window.location.href = mailtoLink;
+  }, 1000);
+};
       const doc=document.getElementById('offerPreviewDoc'); if(!doc) return;
       const co=state.company||{};
       const color=co.color||'#2e75b6';
