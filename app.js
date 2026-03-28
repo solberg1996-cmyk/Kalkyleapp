@@ -1,0 +1,1846 @@
+
+
+
+
+    const builtinTemplates = [
+      { id:'tpl_terrasse', name:'Terrasse', builtIn:true, materials:[
+        {name:'Terrassebord 28x120 impregnert', unit:'lm', waste:10},
+        {name:'Bjelkelag 48x198 C24', unit:'lm', waste:8},
+        {name:'Terrasseskruer A2', unit:'pk', waste:0},
+        {name:'Fundament / stolpesko', unit:'stk', waste:0}
+      ]},
+      { id:'tpl_lettvegg', name:'Lettvegg', builtIn:true, materials:[
+        {name:'Stender 48x98 C24', unit:'stk', waste:8},
+        {name:'Gips 13 mm std', unit:'pl', waste:10},
+        {name:'Mineralull 100 mm', unit:'pk', waste:5},
+        {name:'Gipsskruer båndet', unit:'pk', waste:0}
+      ]},
+      { id:'tpl_vindu', name:'Vindu', builtIn:true, materials:[
+        {name:'Karmskruer 90 mm', unit:'pk', waste:0},
+        {name:'Fugeskum proff', unit:'stk', waste:0},
+        {name:'Lister malt 15x58', unit:'lm', waste:10},
+        {name:'Beslag / tetting', unit:'pakke', waste:0}
+      ]},
+      { id:'tpl_listing', name:'Listing', builtIn:true, materials:[
+        {name:'Fotlist 12x58 hvitmalt', unit:'lm', waste:10},
+        {name:'Dykkert 1,6x50', unit:'pk', waste:0},
+        {name:'Acryl/fug hvit', unit:'stk', waste:0}
+      ]},
+      { id:'tpl_kledning', name:'Kledning', builtIn:true, materials:[
+        {name:'D-fals 19x148 grunnet', unit:'lm', waste:12},
+        {name:'Lekter 23x48', unit:'lm', waste:10},
+        {name:'Vindsperre', unit:'rull', waste:5},
+        {name:'Spiker / skruer utvendig', unit:'pk', waste:0}
+      ]},
+      { id:'tpl_etterisolering', name:'Etterisolering', builtIn:true, materials:[
+        {name:'Isolasjon 50 mm', unit:'pk', waste:8},
+        {name:'Lekt 48x48', unit:'lm', waste:10},
+        {name:'Dampsperre', unit:'rull', waste:5},
+        {name:'Tape / mansjetter', unit:'pakke', waste:0}
+      ]},
+      { id:'tpl_tak', name:'Tak', builtIn:true, materials:[
+        {name:'Takstein / platetak', unit:'m²', waste:10},
+        {name:'Sløyfer og lekter', unit:'lm', waste:8},
+        {name:'Undertaksduk', unit:'rull', waste:5},
+        {name:'Beslag', unit:'pakke', waste:0}
+      ]}
+    ];
+
+    const addOnPackages = [
+      {name:'Sparkelpakke', desc:'Sparkel, papirremse, slipepapir', items:[
+        {name:'Sparkel', qty:3, unit:'spann', waste:0, markup:20},
+        {name:'Papirremse', qty:2, unit:'rull', waste:0, markup:20},
+        {name:'Slipepapir', qty:1, unit:'pk', waste:0, markup:20}
+      ]},
+      {name:'Listverkspakke', desc:'Lister og festemidler', items:[
+        {name:'Listverk standard', qty:20, unit:'lm', waste:10, markup:20},
+        {name:'Dykkert', qty:1, unit:'pk', waste:0, markup:20}
+      ]},
+      {name:'Fug og tetting', desc:'Skum, fug og tetting', items:[
+        {name:'Fugemasse', qty:4, unit:'stk', waste:0, markup:20},
+        {name:'Fugeskum', qty:2, unit:'stk', waste:0, markup:20}
+      ]},
+      {name:'Riving og avfall', desc:'Bortkjøring og avfall', items:[
+        {name:'Avfallshåndtering', qty:1, unit:'jobb', waste:0, markup:10}
+      ]},
+      {name:'Underlagspakke', desc:'Duk, tape og overganger', items:[
+        {name:'Underlagsduk', qty:1, unit:'rull', waste:5, markup:20},
+        {name:'Tape / mansjetter', qty:1, unit:'pakke', waste:0, markup:20}
+      ]}
+    ];
+
+    function getAllTemplates(){ return [...builtinTemplates, ...(state.userTemplates||[])]; }
+
+    function lookupPriceForMaterial(name){
+      if(!state.priceCatalog||!state.priceCatalog.length) return 0;
+      const q = (name||'').toLowerCase().trim();
+      if(!q) return 0;
+      let match = state.priceCatalog.find(item =>
+        (item.productName||item.name||'').toLowerCase()===q || (item.name||'').toLowerCase()===q
+      );
+      if(!match){
+        match = state.priceCatalog.find(item =>
+          (item.productName||item.name||'').toLowerCase().includes(q) ||
+          q.includes((item.productName||item.name||'').toLowerCase().substring(0,8))
+        );
+      }
+      return match ? (match.userPrice||0) : 0;
+    }
+
+    function parsePriceCsv(text){
+      const rows = text.split(/\r?\n/).filter(Boolean);
+      const catalog = [];
+      rows.forEach(line => {
+        const cols = line.split(';');
+        if(cols.length < 8) return;
+        const itemNo=(cols[0]||'').trim(), name=(cols[1]||'').trim(), desc=(cols[2]||'').trim();
+        const regularPrice=parseNbNumber(cols[4]), discountPercent=parseNbNumber(cols[5]), userPrice=parseNbNumber(cols[6]);
+        const unit=(cols[7]||'').trim();
+        const fullText=`${name} ${desc}`.trim();
+        if(!itemNo && !fullText) return;
+        catalog.push({id:itemNo||uid(), itemNo, name:fullText||name||desc||'Uten navn', productName:name, description:desc, regularPrice, discountPercent, userPrice, unit});
+      });
+      return catalog;
+    }
+
+    function importPriceFile(file){
+      const reader = new FileReader();
+      reader.onload = e => {
+        const catalog = parsePriceCsv(e.target.result||'');
+        state.priceCatalog=catalog; state.priceFileName=file.name||'Prisfil';
+        saveState(); renderProjectView();
+        alert(`Prisfil lastet inn: ${catalog.length} varer.`);
+      };
+      reader.readAsText(file,'utf-8');
+    }
+
+    function clearPriceCatalog(){ state.priceCatalog=[]; state.priceFileName=''; saveState(); renderProjectView(); }
+
+    function searchPriceCatalog(query){
+      const q=(query||'').trim().toLowerCase(); if(!q) return [];
+      const exact=[],starts=[],contains=[];
+      state.priceCatalog.forEach(item => {
+        const itemNo=(item.itemNo||'').toLowerCase(), name=(item.productName||item.name||'').toLowerCase(), description=(item.description||'').toLowerCase();
+        if(itemNo===q) exact.push(item);
+        else if(itemNo.startsWith(q)||name.startsWith(q)) starts.push(item);
+        else if(name.includes(q)||description.includes(q)) contains.push(item);
+      });
+      return [...exact,...starts,...contains].slice(0,20);
+    }
+
+    function renderPriceSearchResults(query){
+      const host=$('#priceSearchResults'); if(!host) return;
+      const results=searchPriceCatalog(query);
+      if(!query||!query.trim()){ host.innerHTML=''; return; }
+      if(!state.priceCatalog.length){ host.innerHTML='<div class="empty">Last opp en prisfil for å søke i varer.</div>'; return; }
+      if(!results.length){ host.innerHTML='<div class="empty">Ingen treff.</div>'; return; }
+      host.innerHTML=results.map(item=>`
+        <div class="item">
+          <div>
+            <h4>${escapeHtml(item.productName||item.name)}</h4>
+            <p>${escapeHtml(item.description||'')}</p>
+            <div class="pills" style="margin-top:8px">
+              <span class="pill">Varenr: ${escapeHtml(item.itemNo)}</span>
+              <span class="pill">Enhet: ${escapeHtml(item.unit||'-')}</span>
+              <span class="pill">Din pris: ${currency(item.userPrice)}</span>
+              ${item.regularPrice?`<span class="pill">Ord. pris: ${currency(item.regularPrice)}</span>`:''}
+              ${item.discountPercent?`<span class="pill">Rabatt: ${item.discountPercent}%</span>`:''}
+            </div>
+          </div>
+          <div class="inline-actions">
+            <button class="btn small secondary" onclick="toggleFavoriteCatalog('${escapeHtml(item.id)}')">${isFavoriteCatalog(item.id)?'★ Favoritt':'☆ Favoritt'}</button>
+            <button class="btn small primary" onclick="addCatalogMaterial('${escapeHtml(item.id)}')">Legg til</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function getCatalogItem(id){ return state.priceCatalog.find(x=>String(x.id)===String(id)); }
+    function getFavoriteCatalogItems(){ return (state.favoriteCatalogIds||[]).map(getCatalogItem).filter(Boolean).slice(0,12); }
+    function getRecentCatalogItems(){ return (state.recentCatalogIds||[]).map(getCatalogItem).filter(Boolean).slice(0,10); }
+    function isFavoriteCatalog(id){ return (state.favoriteCatalogIds||[]).includes(String(id)); }
+
+    function toggleFavoriteCatalog(id){
+      const key=String(id); state.favoriteCatalogIds=state.favoriteCatalogIds||[];
+      if(state.favoriteCatalogIds.includes(key)) state.favoriteCatalogIds=state.favoriteCatalogIds.filter(x=>x!==key);
+      else state.favoriteCatalogIds.unshift(key);
+      state.favoriteCatalogIds=[...new Set(state.favoriteCatalogIds)].slice(0,30);
+      saveState(); renderProjectView();
+    }
+
+    function rememberRecentCatalog(id){
+      const key=String(id);
+      state.recentCatalogIds=[key].concat((state.recentCatalogIds||[]).filter(x=>x!==key)).slice(0,20);
+      saveState();
+    }
+
+    function renderQuickCatalogButtons(items, emptyText){
+      if(!items.length) return `<div class="footer-note">${emptyText}</div>`;
+      return items.map(item=>`
+        <button class="package-btn" onclick="addCatalogMaterial('${escapeHtml(item.id)}')">
+          ${escapeHtml(item.productName||item.name)}
+          <small>Varenr: ${escapeHtml(item.itemNo||'-')} • ${escapeHtml(item.unit||'-')} • Din pris: ${currency(item.userPrice||0)}</small>
+        </button>
+      `).join('');
+    }
+
+
+
+
+
+    // Apply accent color from company settings
+    if(state.company?.color && state.company.color!=='#2e75b6'){
+      document.documentElement.style.setProperty('--blue', state.company.color);
+    }
+
+
+
+    function openProjectModal(){
+      const p=blankProject();
+      const opts=['<option value="">Velg kunde</option>'].concat(state.customers.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`)).join('');
+      showModal(`
+        <div class="section-head"><div class="section-title">Nytt prosjekt</div><button class="btn small secondary" onclick="closeModal()">Lukk</button></div>
+        <div class="row">
+          <div><label>Prosjektnavn</label><input id="mPN" /></div>
+          <div><label>Kunde</label><select id="mPC">${opts}</select></div>
+        </div>
+        <div class="row">
+          <div><label>Adresse</label><input id="mPA" /></div>
+          <div><label>Type jobb</label><select id="mPT"><option>Terrasse</option><option>Lettvegg</option><option>Vindu</option><option>Listing</option><option>Kledning</option><option>Etterisolering</option><option>Rehabilitering</option><option>Bad</option><option>Tak</option><option>Annet</option></select></div>
+        </div>
+        <div class="row">
+          <div><label>Ønsket oppstart</label><select id="mPS"><option>Snarest</option><option>Innen 2 uker</option><option>Innen 1 måned</option><option>Etter avtale</option></select></div>
+          <div><label>Status</label><select id="mPSt"><option>Utkast</option><option>Sendt</option><option>Vunnet</option><option>Tapt</option><option>Pågår</option><option>Ferdig</option></select></div>
+        </div>
+        <label>Beskrivelse</label><textarea id="mPD"></textarea>
+        <div class="toolbar" style="margin-top:14px"><button class="btn primary" id="saveProjBtn">Opprett prosjekt</button></div>
+      `);
+      $('#mPC').addEventListener('change',()=>{ const cu=getCustomer($('#mPC').value); if($('#mPA')&&cu) $('#mPA').value=cu.address||''; });
+      $('#saveProjBtn').onclick=()=>{
+        p.name=$('#mPN').value.trim(); p.customerId=$('#mPC').value; p.address=$('#mPA').value.trim();
+        if(!p.address&&p.customerId){const cu=getCustomer(p.customerId);if(cu)p.address=cu.address||'';}
+        p.type=$('#mPT').value; p.startPref=$('#mPS').value; p.status=$('#mPSt').value; p.description=$('#mPD').value.trim();
+        if(!p.name){alert('Skriv inn prosjektnavn.');return;}
+        p.updatedAt=Date.now(); state.projects.unshift(p); saveState(); closeModal(); renderDashboard(); openProject(p.id);
+      };
+    }
+
+    // Apply template: use itemNo for exact price lookup when available
+    function applyTemplateById(tplId){
+      const p=getProject(currentProjectId); if(!p) return;
+      const tpl=getAllTemplates().find(t=>t.id===tplId); if(!tpl) return;
+      const newMats=tpl.materials.map(m=>{
+        let cost=0;
+        if(m.itemNo && state.priceCatalog.length){
+          const byItemNo=state.priceCatalog.find(x=>String(x.itemNo)===String(m.itemNo));
+          cost=byItemNo?(byItemNo.userPrice||0):lookupPriceForMaterial(m.name);
+        } else if(m.cost){
+          cost=m.cost;
+        } else {
+          cost=lookupPriceForMaterial(m.name);
+        }
+        return {id:uid(), name:m.name, itemNo:m.itemNo||'', qty:m.qty||1, unit:m.unit||'stk', cost, waste:m.waste||0, markup:p.settings.materialMarkup};
+      });
+      p.materials=[...p.materials,...newMats];
+      const matched=newMats.filter(m=>m.cost>0).length;
+      persistAndRenderProject();
+      if(matched<newMats.length&&state.priceCatalog.length){
+        alert(`Mal "${tpl.name}" lagt til.\n${matched} av ${newMats.length} materialer fikk pris.\nSjekk oransje felt og fyll inn manglende priser.`);
+      }
+    }
+
+    // Template editor modal with price catalog search
+    function openTemplateModal(existing){
+      const tpl=existing?{...existing,materials:existing.materials.map(m=>({...m}))}:{id:uid(),name:'',builtIn:false,materials:[]};
+      window._editingTpl=tpl;
+
+      function rows(){
+        if(!tpl.materials.length) return '<div class="empty" style="padding:14px">Ingen materialer lagt til enda. Søk opp varer nedenfor.</div>';
+        return tpl.materials.map((m,i)=>`
+          <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;margin-bottom:8px;align-items:center;padding:10px;background:#f8faff;border:1px solid var(--line);border-radius:12px">
+            <div>
+              <div style="font-weight:700;font-size:14px">${escapeHtml(m.name)}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">${m.itemNo?`Varenr: ${escapeHtml(m.itemNo)} • `:''}${escapeHtml(m.unit||'stk')}${m.cost?` • ${currency(m.cost)}`:'  • Pris fra prisfil ved bruk'}</div>
+            </div>
+            <input type="number" value="${m.waste||0}" placeholder="Svinn%" title="Svinn %" style="width:70px;padding:8px;font-size:13px;text-align:center" oninput="window._editingTpl.materials[${i}].waste=Number(this.value)" />
+            <button class="btn small danger" onclick="tplRemoveRow(${i})" style="padding:8px">✕</button>
+          </div>`).join('');
+      }
+
+      function searchRows(q){
+        const results=searchPriceCatalog(q);
+        const host=document.getElementById('tplSearchResults'); if(!host) return;
+        if(!q.trim()){host.innerHTML='';return;}
+        if(!state.priceCatalog.length){host.innerHTML='<div class="empty">Last opp prisfil for å søke.</div>';return;}
+        if(!results.length){host.innerHTML='<div class="empty">Ingen treff.</div>';return;}
+        host.innerHTML=results.map(item=>`
+          <div class="item" style="padding:10px">
+            <div>
+              <div style="font-weight:700;font-size:13px">${escapeHtml(item.productName||item.name)}</div>
+              <div style="font-size:12px;color:var(--muted)">${escapeHtml(item.itemNo||'')} • ${escapeHtml(item.unit||'-')} • ${currency(item.userPrice||0)}</div>
+            </div>
+            <button class="btn small primary" onclick="tplAddFromCatalog('${escapeHtml(item.id)}')">+ Legg til</button>
+          </div>`).join('');
+      }
+
+      showModal(`
+        <div class="section-head">
+          <div class="section-title">${existing?'Rediger mal':'Ny mal'}</div>
+          <button class="btn small secondary" onclick="closeModal()">Lukk</button>
+        </div>
+        <label>Malnavn</label>
+        <input id="tplNameInput" value="${escapeAttr(tpl.name)}" placeholder="F.eks. Bad komplett" />
+
+        <div style="margin-top:16px;padding:14px;background:#f0f7ff;border:1px solid #cde2ff;border-radius:14px">
+          <label style="margin:0 0 8px">🔍 Søk i prisfil og legg til materialer</label>
+          <input id="tplSearchInput" placeholder="Søk varenummer eller navn..." />
+          <div id="tplSearchResults" class="list" style="margin-top:10px;max-height:220px;overflow-y:auto"></div>
+        </div>
+
+        <div style="margin-top:14px">
+          <div style="font-weight:800;font-size:14px;margin-bottom:8px">Materialer i malen <span style="font-size:12px;color:var(--muted);font-weight:500">(svinn % kan endres per materiale)</span></div>
+          <div id="tplRowsContainer">${rows()}</div>
+        </div>
+
+        <div class="toolbar" style="margin-top:16px">
+          <button class="btn primary" id="saveTplBtn">Lagre mal</button>
+          ${existing&&!existing.builtIn?`<button class="btn danger" onclick="deleteUserTemplate('${tpl.id}')">Slett mal</button>`:''}
+        </div>
+      `);
+
+      document.getElementById('tplSearchInput').addEventListener('input', e=>searchRows(e.target.value));
+
+      window.tplAddFromCatalog=(itemId)=>{
+        const item=getCatalogItem(itemId); if(!item) return;
+        window._editingTpl.materials.push({
+          id:uid(), name:item.productName||item.name, itemNo:item.itemNo||'',
+          unit:item.unit||'stk', cost:item.userPrice||0, waste:0
+        });
+        document.getElementById('tplRowsContainer').innerHTML=rows();
+        const si=document.getElementById('tplSearchInput');
+        if(si){si.value=''; document.getElementById('tplSearchResults').innerHTML='';}
+      };
+
+      window.tplRemoveRow=(i)=>{ window._editingTpl.materials.splice(i,1); document.getElementById('tplRowsContainer').innerHTML=rows(); };
+
+      $('#saveTplBtn').onclick=()=>{
+        const name=$('#tplNameInput').value.trim();
+        if(!name){alert('Skriv inn malnavn.');return;}
+        window._editingTpl.name=name;
+        if(!window._editingTpl.materials.length){alert('Legg til minst ett materiale.');return;}
+        state.userTemplates=state.userTemplates||[];
+        const idx=state.userTemplates.findIndex(t=>t.id===window._editingTpl.id);
+        if(idx>-1) state.userTemplates[idx]=window._editingTpl; else state.userTemplates.push(window._editingTpl);
+        saveState(); closeModal(); renderProjectView();
+      };
+    }
+
+    function deleteUserTemplate(id){
+      if(!confirm('Slette denne malen?')) return;
+      state.userTemplates=(state.userTemplates||[]).filter(t=>t.id!==id);
+      saveState(); closeModal(); renderProjectView();
+    }
+
+    function addSubcontractor(){
+      const p=getProject(currentProjectId); if(!p) return;
+      p.extras.subcontractors=p.extras.subcontractors||[];
+      p.extras.subcontractors.push({id:uid(), trade:'Rørlegger', amount:0});
+      persistAndRenderProject();
+    }
+    function removeSubcontractor(id){
+      const p=getProject(currentProjectId); if(!p) return;
+      p.extras.subcontractors=(p.extras.subcontractors||[]).filter(s=>s.id!==id);
+      persistAndRenderProject();
+    }
+    function updSubcontractor(id,key,val){
+      const p=getProject(currentProjectId); if(!p) return;
+      const s=(p.extras.subcontractors||[]).find(x=>x.id===id); if(!s) return;
+      s[key]=key==='amount'?(parseVatInput(p,val)):val;
+      persistAndUpdate();
+    }
+    // ---- CALC POST MODAL ----
+    function renderCalcModal(){
+      const p=getProject(currentProjectId);
+      const mats=window._cpm||[];
+
+      function matTotal(){
+        return mats.reduce((s,m)=>{
+          const base=(Number(m.qty)||1)*(Number(m.cost)||0)*(1+(Number(m.waste)||0)/100);
+          return s+base*(1+(Number(m.markup)||0)/100);
+        },0);
+      }
+
+      const pctOpts=[0,5,8,10,12,15,20,25,30];
+
+      const rows=mats.length ? mats.map((m,i)=>`
+        <div style="display:grid;grid-template-columns:1fr 64px 64px 72px 68px 68px 32px;gap:5px;align-items:center;padding:8px;background:${m.cost===0?'#fffbea':'#f8faff'};border:1px solid ${m.cost===0?'#fde68a':'var(--line)'};border-radius:12px;margin-bottom:5px">
+          <div>
+            <div style="font-weight:700;font-size:13px">${escapeHtml(m.name)}</div>
+            ${m.itemNo?`<div style="font-size:11px;color:var(--muted)">🔖 ${escapeHtml(m.itemNo)}</div>`:''}
+          </div>
+          <input type="number" value="${m.qty||1}" title="Antall" style="padding:6px;font-size:13px;text-align:center;border:1px solid var(--line);border-radius:9px;width:100%" onchange="window._cpm[${i}].qty=Number(this.value);rerenderCalcModal()" />
+          <input value="${escapeHtml(m.unit||'stk')}" title="Enhet" style="padding:6px;font-size:13px;border:1px solid var(--line);border-radius:9px;width:100%" onchange="window._cpm[${i}].unit=this.value" />
+          <input type="number" value="${m.cost||0}" title="Innpris" style="padding:6px;font-size:13px;text-align:right;border:1px solid var(--line);border-radius:9px;width:100%" onchange="window._cpm[${i}].cost=Number(this.value);rerenderCalcModal()" />
+          <select title="Svinn %" style="padding:6px;font-size:13px;border:1px solid var(--line);border-radius:9px;width:100%" onchange="window._cpm[${i}].waste=Number(this.value);rerenderCalcModal()">
+            ${pctOpts.map(v=>`<option value="${v}" ${(m.waste||0)==v?'selected':''}>${v}%</option>`).join('')}
+          </select>
+          <select title="Påslag %" style="padding:6px;font-size:13px;border:1px solid var(--line);border-radius:9px;width:100%" onchange="window._cpm[${i}].markup=Number(this.value);rerenderCalcModal()">
+            ${pctOpts.map(v=>`<option value="${v}" ${(m.markup||20)==v?'selected':''}>${v}%</option>`).join('')}
+          </select>
+          <button style="border:none;background:#fff1f0;color:var(--red);border-radius:8px;padding:6px 8px;cursor:pointer;font-size:12px;width:100%" onclick="window._cpm.splice(${i},1);rerenderCalcModal()">✕</button>
+        </div>`).join('')
+        : '<div class="empty">Ingen materialer enda.</div>';
+
+      const searchResults=window._cpmSearch ? searchPriceCatalog(window._cpmSearch) : [];
+      const searchHtml = window._cpmSearch ? (
+        searchResults.length
+          ? searchResults.map(item=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:5px">
+              <div>
+                <div style="font-weight:700;font-size:13px">${escapeHtml(item.productName||item.name)}</div>
+                <div style="font-size:11px;color:var(--muted)">${escapeHtml(item.itemNo||'')} • ${escapeHtml(item.unit||'-')} • ${currency(item.userPrice||0)}</div>
+              </div>
+              <button class="btn small primary" onclick="addFromCatalogToCalcModal('${escapeHtml(item.id)}')">+ Legg til</button>
+            </div>`).join('')
+          : '<div class="empty" style="padding:10px">Ingen treff.</div>'
+      ) : '';
+
+      const postId=window._cpmPostId;
+      const offerPost=postId&&getProject(currentProjectId)?.offerPosts?.find(x=>x.id===postId);
+      const calcHours=offerPost?.snapshotCompute?.hoursTotal||0;
+      const currentHours=offerPost?Number(offerPost.hours)||calcHours:0;
+      const html=`
+        <div class="section-head">
+          <div class="section-title">✏️ Tilpass post</div>
+          <button class="btn small secondary" onclick="closeModal()">Lukk</button>
+        </div>
+        ${offerPost?`
+        <div style="background:#fffbea;border:1px solid #fde68a;border-radius:12px;padding:12px;margin-bottom:12px;display:flex;align-items:center;gap:16px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:800;margin-bottom:2px">⏱️ Timer for denne posten</div>
+            <div style="font-size:12px;color:var(--muted)">${calcHours?'Kalkyle beregnet: '+calcHours+'t':''}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <button onclick="adjustModalHours(1)" style="border:none;background:#fde68a;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:16px;font-weight:800;width:100%">▲</button>
+            <div id="postHoursDisplay" style="font-size:28px;font-weight:800;color:#a96800;min-width:70px;text-align:center">${currentHours||calcHours||0}</div>
+            <button onclick="adjustModalHours(-1)" style="border:none;background:#fde68a;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:16px;font-weight:800;width:100%">▼</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted)">timer<br><span style="font-size:10px">Fra kalkyle: ${calcHours||0}t</span></div>
+        </div>`:``}
+
+
+
+        <div style="background:#f0f7ff;border:1px solid #cde2ff;border-radius:14px;padding:12px;margin-bottom:14px">
+          <label style="margin:0 0 6px">🔍 Søk i prisfil og legg til</label>
+          <input id="calcModalSearch" placeholder="Søk varenummer eller navn..." value="${escapeAttr(window._cpmSearch||'')}"
+            oninput="window._cpmSearch=this.value;rerenderCalcModal()" style="margin:0" />
+          <div style="margin-top:8px;max-height:180px;overflow-y:auto">${searchHtml}</div>
+        </div>
+
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Ant. • Enhet • Innpris • Svinn% • Påslag%</div>
+        <div id="calcMatRows">${rows}</div>
+        <button class="btn small soft" style="margin-top:8px" onclick="addBlankToCalcModal()">+ Tom rad</button>
+
+        <div style="margin-top:14px;padding:12px 16px;background:#f5f8ff;border-radius:14px;border:1px solid #dce8ff;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:13px;font-weight:700;color:var(--muted)">Materialsum (salgsverdi)</div>
+          <div style="font-size:22px;font-weight:800;color:var(--blue)">${currency(matTotal())}</div>
+        </div>
+        <div class="toolbar" style="margin-top:14px">
+          <button class="btn primary" onclick="saveCalcPostMaterials()">💾 Lagre og oppdater tilbud</button>
+          <button class="btn secondary" onclick="closeModal()">Avbryt</button>
+        </div>`;
+
+      showModal(html);
+      // Re-focus search if it was active
+      const si=document.getElementById('calcModalSearch');
+      if(si && window._cpmSearch){ si.focus(); si.setSelectionRange(si.value.length,si.value.length); }
+    }
+
+    function rerenderCalcModal(){ renderCalcModal(); }
+    window.rerenderCalcModal=rerenderCalcModal;
+
+    window.addBlankToCalcModal=function(){
+      window._cpm.push({id:(Math.random().toString(36).slice(2,10)),name:'Nytt materiale',qty:1,unit:'stk',cost:0,waste:0,markup:20});
+      rerenderCalcModal();
+    };
+
+    window.adjustTotalHours=function(delta){
+      const p=getProject(currentProjectId); if(!p) return;
+      const c=compute(p);
+      // Use current displayed totalHours as base, store in hoursOverride
+      const current=Number(p.work.hoursOverride)>0 ? Number(p.work.hoursOverride) : c.totalHours;
+      p.work.hoursOverride=Math.max(0, current+delta);
+      persistAndUpdate();
+    };
+
+    window.openSendCalcToOfferModal=function(){
+      const p=getProject(currentProjectId); if(!p) return;
+      const c=compute(p);
+      showModal(`
+        <div class="section-head">
+          <div class="section-title">📄 Send til tilbud</div>
+          <button class="btn small secondary" onclick="closeModal()">Lukk</button>
+        </div>
+        <label>Navn på tilbudspost</label>
+        <input id="calcPostName" value="${escapeAttr(p.name||'Kalkyle')}" placeholder="F.eks. Terrasse, Kledning vegg..." />
+        <div style="margin-top:12px;padding:12px;background:#f5f8ff;border-radius:14px;font-size:13px;color:var(--muted)">
+          ${p.materials.length} materialer + ${c.hoursTotal} timer legges til som post
+        </div>
+        <div class="toolbar" style="margin-top:14px">
+          <button class="btn primary" onclick="doSendCalcToOffer()">📄 Legg til i tilbud</button>
+          <button class="btn secondary" onclick="closeModal()">Avbryt</button>
+        </div>
+      `);
+    };
+
+
+    // ── OFFER VIEW STATE ─────────────────────────────────────────────────────
+        function initOfferPreviewTab(p){
+      if(!p) return;
+      _offerState.texts.innledning = _offerState.texts.innledning || (p.description||'');
+      _offerState.texts.fremdrift = _offerState.texts.fremdrift || ('Planlagt oppstart: '+(p.startPref||'Etter avtale')+'\nOppstart og ferdigstillelse er estimert og kan påvirkes av værforhold, leveranser og uforutsette forhold.');
+      _offerState.texts.forbehold = _offerState.texts.forbehold || ('Tilbudet er gyldig i '+(p.offer&&p.offer.validity?p.offer.validity:'14')+' dager fra tilbudsdato, dersom annet ikke er avtalt.');
+      // Init arbeidsomfang from offer posts
+      if(!_offerState.arbeidsomfangPosts.length && p.offerPosts&&p.offerPosts.length){
+        _offerState.arbeidsomfangPosts = p.offerPosts.map(function(post){
+          return {id:post.id, name:post.name, checked:true};
+        });
+      }
+      // Init customPosts for postervisning
+      if(!_offerState.customPosts.length && p.offerPosts&&p.offerPosts.length){
+        _offerState.customPosts = p.offerPosts.map(function(post){
+          return {id:uid(), name:post.name, price:post.price||0, sourceIds:[post.id]};
+        });
+      }
+      // Build extra posts from prosjektkostnader + innleid
+      rebuildExtraPosts(p);
+      renderOfferEditorPane();
+      renderOfferPreview();
+    }
+
+        window.openOfferView=function(){
+      const p=getProject(currentProjectId); if(!p) return;
+      // Init texts from project offer data
+      _offerState.texts.innledning = p.description||'';
+      _offerState.texts.arbeidsomfang = p.offer&&p.offer.included?p.offer.included:'';
+      _offerState.texts.ikkemedregnet = p.offer&&p.offer.excluded?p.offer.excluded:'- Elektrikerarbeider\n- Rørleggerarbeider\n- Maling og sparkling\n- Byggesøknad og prosjektering';
+      _offerState.texts.fremdrift = 'Planlagt oppstart: '+(p.startPref||'Etter avtale')+'\nOppstart og ferdigstillelse er estimert og kan påvirkes av værforhold, leveranser og uforutsette forhold.';
+      _offerState.texts.forbehold = 'Tilbudet er basert på dagens priser på materialer og lønn. Det tas forbehold om prisendringer fra leverandører eller uforutsette forhold utenfor entreprenørens kontroll.\n\nTilbudet er gyldig i '+(p.offer&&p.offer.validity?p.offer.validity:'14 dager')+' fra tilbudsdato, dersom annet ikke er avtalt.';
+      // Init custom posts from offer posts
+      if(!_offerState.customPosts.length && p.offerPosts&&p.offerPosts.length){
+        _offerState.customPosts = p.offerPosts.map(function(post){
+          return {id:uid(), name:post.name, price:post.price||0, sourceIds:[post.id]};
+        });
+      }
+      // Show view
+      $('#projectView').classList.add('hidden');
+      $('#offerView').classList.remove('hidden');
+      $('#offerViewTitle').textContent = 'Tilbud — '+(p.name||'');
+      renderOfferEditor();
+      renderOfferPreview();
+    };
+
+    document.getElementById('backFromOfferBtn')&&document.getElementById('backFromOfferBtn').addEventListener('click',function(){
+      $('#offerView').classList.add('hidden');
+      $('#projectView').classList.remove('hidden');
+    });
+
+    window.setOfferPostMode=function(mode){
+      _offerState.postMode=mode;
+      document.getElementById('customPostEditor').style.display=mode==='custom'?'':'none';
+      renderOfferPreview();
+      if(mode==='custom') renderCustomPostEditor();
+    };
+
+    function renderCustomPostEditor(){
+      const p=getProject(currentProjectId); if(!p) return;
+      const el=document.getElementById('customPostEditor'); if(!el) return;
+      const posts=p.offerPosts||[];
+      el.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Slå sammen poster og gi nye navn:</div>'
+        +_offerState.customPosts.map(function(cp,i){
+          return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
+            +'<input value="'+escapeAttr(cp.name)+'" style="flex:1;font-size:12px;padding:6px 8px" oninput="_offerState.customPosts['+i+'].name=this.value;renderOfferPreview()" />'
+            +'<button onclick="removeCustomPost('+i+')" style="border:none;background:#fff1f0;color:var(--red);border-radius:6px;padding:6px 8px;cursor:pointer;font-size:12px">✕</button>'
+            +'</div>';
+        }).join('')
+        +'<button class="btn small soft" style="width:100%;margin-top:4px" onclick="mergeAllCustomPosts()">Slå sammen alle til én</button>';
+    }
+
+    window.removeCustomPost=function(idx){
+      _offerState.customPosts.splice(idx,1);
+      renderCustomPostEditor();
+      renderOfferPreview();
+    };
+
+    window.mergeAllCustomPosts=function(){
+      const p=getProject(currentProjectId); if(!p) return;
+      const total=_offerState.customPosts.reduce(function(s,cp){return s+cp.price;},0);
+      _offerState.customPosts=[{id:uid(),name:p.name||'Tilbudssum',price:total,sourceIds:[]}];
+      renderCustomPostEditor();
+      renderOfferPreview();
+    };
+
+    function renderOfferEditor(){
+      // Section toggles
+      const toggleEl=document.getElementById('sectionToggles'); if(!toggleEl) return;
+      const sectionLabels={
+        innledning:'Innledning', grunnlag:'Grunnlag for tilbudet',
+        arbeidsomfang:'Arbeidsomfang', ikkemedregnet:'Ikke medregnet',
+        prisogbetaling:'Pris og betaling', fremdrift:'Fremdrift', forbehold:'Forbehold'
+      };
+      toggleEl.innerHTML=Object.keys(sectionLabels).map(function(key){
+        return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">'
+          +'<input type="checkbox" style="width:auto" '+((_offerState.sections[key])?'checked':'')+' onchange="_offerState.sections.'+key+'=this.checked;renderOfferPreview()" />'
+          +sectionLabels[key]+'</label>';
+      }).join('');
+
+      // Editable text fields
+      const textEl=document.getElementById('offerTextFields'); if(!textEl) return;
+      const editableLabels={
+        innledning:'Innledning', arbeidsomfang:'Inkludert i tilbudet',
+        ikkemedregnet:'Ikke inkludert'
+      };
+      textEl.innerHTML=Object.keys(editableLabels).map(function(key){
+        return '<div><label style="font-size:11px;font-weight:700;color:var(--muted)">'
+          +editableLabels[key]+'</label>'
+          +'<textarea style="font-size:12px;min-height:70px;margin-top:4px" oninput="_offerState.texts.'+key+'=this.value;renderOfferPreview()">'+escapeHtml(_offerState.texts[key]||'')+'</textarea></div>';
+      }).join('');
+
+      renderFreeSectionList();
+    }
+
+    window.addFreeSection=function(){
+      _offerState.freeSections.push({id:uid(),title:'Ny seksjon',text:''});
+      renderFreeSectionList();
+      renderOfferPreview();
+    };
+
+    function renderFreeSectionList(){
+      const el=document.getElementById('freeSectionList'); if(!el) return;
+      el.innerHTML=_offerState.freeSections.map(function(sec,i){
+        return '<div style="background:#f8f9fc;border:1px solid var(--line);border-radius:10px;padding:8px">'
+          +'<div style="display:flex;gap:6px;margin-bottom:6px">'
+          +'<input value="'+escapeAttr(sec.title)+'" placeholder="Tittel" style="flex:1;font-size:12px;padding:5px 8px;font-weight:700" oninput="_offerState.freeSections['+i+'].title=this.value;renderOfferPreview()" />'
+          +'<button onclick="_offerState.freeSections.splice('+i+',1);renderFreeSectionList();renderOfferPreview()" style="border:none;background:#fff1f0;color:var(--red);border-radius:6px;padding:5px 8px;cursor:pointer;font-size:12px">✕</button>'
+          +'</div>'
+          +'<textarea style="font-size:12px;min-height:60px" placeholder="Tekst..." oninput="_offerState.freeSections['+i+'].text=this.value;renderOfferPreview()">'+escapeHtml(sec.text||'')+'</textarea>'
+          +'</div>';
+      }).join('');
+    }
+
+
+
+
+        window.openOfferFullPreview=function(){
+      const doc=document.getElementById('offerPreviewDoc'); if(!doc) return;
+      const co=state.company||{};
+      const color=co.color||'#2e75b6';
+      var css=getOfferCSS(color);
+      var html='<!DOCTYPE html><html lang="no"><head><meta charset="UTF-8"><title>Tilbud</title><style>'+css
+        +'body{padding:30px 40px}@media print{.no-print{display:none!important}}'
+        +'</style></head><body>'
+        +'<div style="text-align:center;margin-bottom:20px" class="no-print">'
+        +'<button onclick="window.print()" style="background:'+color+';color:#fff;border:none;border-radius:6px;padding:12px 32px;font-size:14px;font-weight:700;cursor:pointer">🖨️ Skriv ut / Lagre som PDF</button>'
+        +'</div>'
+        +doc.innerHTML+'</body></html>';
+      var blob=new Blob([html],{type:'text/html'});
+      var url=URL.createObjectURL(blob);
+      window.open(url,'_blank');
+      setTimeout(function(){URL.revokeObjectURL(url);},30000);
+    };
+
+    window.downloadOfferPDF=function(){
+      const p=getProject(currentProjectId); if(!p) return;
+      const doc=document.getElementById('offerPreviewDoc'); if(!doc) return;
+      const co=state.company||{};
+      const color=co.color||'#2e75b6';
+      var css=getOfferCSS(color);
+      var html='<!DOCTYPE html><html lang="no"><head><meta charset="UTF-8"><title>Tilbud</title><style>'+css
+        +'body{padding:30px 40px}@media print{.no-print{display:none!important}}'
+        +'</style></head><body>'
+        +doc.innerHTML+'</body></html>';
+      var blob=new Blob([html],{type:'text/html'});
+      var url=URL.createObjectURL(blob);
+      var name=(p.name||'prosjekt').replace(/[^\wæøåÆØÅ0-9-]/g,'_');
+      var a=document.createElement('a');
+      a.href=url;
+      a.download='Tilbud_'+name+'.html';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function(){URL.revokeObjectURL(url);},30000);
+    };
+
+    window.sendOfferNow=function(){
+      const p=getProject(currentProjectId); if(!p) return;
+      const cust=getCustomer(p.customerId);
+      const co=state.company||{};
+      const toEmail=cust&&cust.email?cust.email:'';
+      const subject='Tilbud - '+(p.name||'Prosjekt')+(co.name?' - '+co.name:'');
+      const body=
+        'Hei,\n\n'
+        +'Vedlagt finner du tilbud på '+(p.name||'prosjekt')+'.\n\n'
+        +'Gi gjerne tilbakemelding dersom du har spørsmål.\n\n'
+        +'Mvh\n'
+        +(co.name||'');
+      const mailtoLink=
+        'mailto:'+encodeURIComponent(toEmail)
+        +'?subject='+encodeURIComponent(subject)
+        +'&body='+encodeURIComponent(body);
+
+      openOfferFullPreview();
+
+      setTimeout(function(){
+        window.location.href=mailtoLink;
+      },1000);
+    };
+
+    window.printOffer=function(){
+      openOfferFullPreview();
+    };
+
+
+
+
+        window.generateOfferPDF=function(){
+      const p=getProject(currentProjectId); if(!p) return;
+      const cust=getCustomer(p.customerId);
+      const cv=compute(p);
+      const ps=computeOfferPostsTotal(p);
+      const co=state.company||{};
+      const color=co.color||'#2e75b6';
+      const today=new Date().toLocaleDateString('nb-NO');
+      const validity=p.offer&&p.offer.validity?p.offer.validity:'14 dager';
+      function fmt(n){return Math.round(n||0).toLocaleString('nb-NO')+' kr';}
+      function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+      function nl(s){return esc(s||'').replace(/\n/g,'<br>');}
+
+      // Price rows
+      var priceRows='';
+      if(p.offerPosts&&p.offerPosts.length){
+        p.offerPosts.filter(function(post){return post.type!=='option'||post.enabled;}).forEach(function(post){
+          priceRows+='<tr><td class="dc"><b>'+esc(post.name||'')+'</b>'+(post.description?'<br><span style="font-size:10pt;color:#555">'+esc(post.description)+'</span>':'')+(post.type==='option'?'<span style="font-size:9pt;color:#a96800;margin-left:6px">(opsjon)</span>':'')+'</td><td class="ac">'+fmt(post.price||0)+'</td></tr>';
+        });
+      } else {
+        priceRows='<tr><td class="dc"><b>Tomrerarbeider</b><br><span style="font-size:10pt;color:#555">'+cv.totalHours+' timer</span></td><td class="ac">'+fmt(cv.totalLaborSaleEx)+'</td></tr>';
+        if(cv.totalMatSaleEx>0) priceRows+='<tr><td class="dc"><b>Materialer</b></td><td class="ac">'+fmt(cv.totalMatSaleEx)+'</td></tr>';
+        if(cv.extrasBase+cv.rigEx>0) priceRows+='<tr><td class="dc"><b>Rigg og drift</b></td><td class="ac">'+fmt(cv.extrasBase+cv.rigEx)+'</td></tr>';
+      }
+      var totalEx=p.offerPosts&&p.offerPosts.length?ps.total:cv.totalSaleEx;
+      var totalInc=Math.round(totalEx*1.25);
+      var mva=Math.round(totalEx*0.25);
+
+      // Logo: use uploaded logo from settings, or fallback
+      var logoSrc=co.logo||window._fallbackLogo||'';
+      var logoHtml=logoSrc?'<div style="width:350px;height:140px;display:flex;align-items:center"><img src="'+logoSrc+'" style="max-width:100%;max-height:100%;object-fit:contain"></div>':'';
+      // Company block
+     var coBlock=
+  (co.name?'<strong style="display:block;margin-bottom:4px">'+esc(co.name)+'</strong>':'')
+  +(co.address?'<div>'+esc(co.address)+'</div>':'')
+  +((co.zip||co.city)?'<div>'+ (esc(co.zip||'')+' '+esc(co.city||'')).trim() +'</div>':'')
+  +(co.phone?'<div>Tlf: '+esc(co.phone)+'</div>':'')
+  +(co.email?'<div>'+esc(co.email)+'</div>':'')
+  +(co.orgNr?'<div>Org.nr: '+esc(co.orgNr)+'</div>':'');
+
+      var custBlock=(cust?esc(cust.name):'NAVN')+'<br>'
+        +(cust&&cust.phone?esc(cust.phone)+'<br>':'')
+        +(p.address?esc(p.address)+'<br>':'')
+        +(cust&&cust.email?esc(cust.email):'');
+
+      var c1=color;
+      var css='*{box-sizing:border-box;margin:0;padding:0}'
+        +'body{font-family:Calibri,Arial,sans-serif;color:#000;font-size:11pt;line-height:1.5}'
+        +'.page{max-width:800px;margin:0 auto;padding:30px 40px 50px}'
+        +'.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}'
+        +'.co{text-align:left;font-size:10.5pt;line-height:1.5}'
+        +'.co strong{font-size:11.5pt;display:block}'
+        +'.divider{border:none;border-top:2.5px solid '+c1+';margin:10px 0 24px}'
+        +'.boxes{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}'
+        +'.box{border:2.5px solid '+c1+';padding:16px 18px;font-size:10.5pt;line-height:2.1;min-height:90px;border-radius:4px}'
+        +'.title{font-size:26pt;font-weight:700;margin-bottom:18px}'
+        +'.mt{width:100%;border-collapse:collapse;margin-bottom:20px}'
+        +'.mt .hr th{background:'+c1+';color:#fff;padding:8px 12px;text-align:left;font-size:10pt;font-weight:600}'
+        +'.mt .hr th.ac{text-align:right}'
+        +'.mt td{padding:7px 12px;border-bottom:1px solid #e8e8e8;font-size:10.5pt;vertical-align:top}'
+        +'.mt tr:nth-child(odd) td{background:#f4f8fd}'
+        +'.mt tr:nth-child(even) td{background:#fff}'
+        +'.dc{width:65%}'
+        +'.ac{text-align:right;font-weight:700;white-space:nowrap}'
+        +'.sum-row td{border-top:1.5px solid #aaa;font-weight:700;background:#f4f8fd!important}'
+        +'.mva-row td{color:#666;font-size:10pt;background:#fff!important}'
+        +'.total-row td{background:'+c1+'!important;color:#fff!important;font-weight:800;font-size:12pt;padding:10px 12px}'
+        +'.sec{margin-bottom:16px}'
+        +'.sec h3{font-size:10.5pt;font-weight:700;text-transform:uppercase;margin-bottom:5px}'
+        +'.sec p{font-size:10.5pt;line-height:1.65;color:#222;margin-bottom:6px}'
+        +'.print-btn{display:block;margin:28px auto 0;background:'+c1+';color:#fff;border:none;border-radius:6px;padding:13px 36px;font-size:14px;font-weight:700;cursor:pointer}'
+        +'@media print{.print-btn{display:none!important}.page{padding:20px 30px}}';
+
+      var body='<div class="page">'
+        +'<div class="hdr">'+logoHtml+'<div class="co">'+coBlock+'</div></div>'
+        +'<hr class="divider">'
+        +'<div class="boxes"><div class="box">'+custBlock+'</div><div class="box">Deres ref.<br><br>Dato: '+today+'<br>Prosjekt: '+esc(p.name||'')+'</div></div>'
+        +'<div class="title">TILBUD</div>'
+        +'<table class="mt"><thead><tr class="hr"><th class="dc">BESKRIVELSE</th><th class="ac">SUM eks mva</th></tr></thead><tbody>'
+        +priceRows
+        +'<tr class="mva-row"><td class="dc">MVA 25%</td><td class="ac">'+fmt(mva)+'</td></tr>'
+        +'<tr class="sum-row"><td class="dc">Sum eks. mva</td><td class="ac">'+fmt(totalEx)+'</td></tr>'
+        +'<tr class="total-row"><td class="dc">TOTALPRIS INKL. MVA</td><td class="ac">'+fmt(totalInc)+'</td></tr>'
+        +'</tbody></table>'
+        +'<div class="sec"><h3>Innledning</h3><p>Tilbudet gjelder tomrerarbeider i forbindelse med '+esc(p.name||'')+'. '+esc(p.description||'Arbeidet utfores iht. befaring og avtalt omfang.')+'</p></div>'
+        +'<div class="sec"><h3>Grunnlag for tilbudet</h3><p>Tilbudet er basert pa befaring, mottatte tegninger og normale arbeidsforhold.</p></div>'
+        +'<div class="sec"><h3>Arbeidsomfang</h3><p>'+nl(p.offer&&p.offer.included?p.offer.included:'Folgende arbeid er inkludert i tilbudet:')+'</p></div>'
+        +'<div class="sec"><h3>Ikke medregnet i tilbudet</h3><p>'+nl(p.offer&&p.offer.excluded?p.offer.excluded:'- Elektrikerarbeider\n- Rorleggerarbeider\n- Maling og sparkling\n- Byggesoknad og prosjektering')+'</p></div>'
+        +'<div class="sec"><h3>Pris og betaling</h3><p>Arbeidet utfores til avtalt fastpris eller etter medgatt tid og materialer. Betalingsfrist er 10 dager netto.</p>'
+        +'<p>Timepris tomrer: kr '+Math.round(p.work.timeRate||850)+' eks. mva pr time</p>'
+        +'<p>- Paslag pa materiell: '+(p.settings.materialMarkup||15)+'%</p></div>'
+        +'<div class="sec"><h3>Fremdrift</h3><p>Planlagt oppstart: '+esc(p.startPref||'Etter avtale')+'<br>Oppstart er estimert og kan pavirkes av vaerforhold og leveranser.</p></div>'
+        +'<div class="sec"><h3>Forbehold</h3><p>Tilbudet er basert pa dagens priser. Tilbudet er gyldig i <strong>'+esc(validity)+'</strong> fra tilbudsdato.</p></div>'
+        +(p.note?'<div class="sec"><h3>Notat</h3><p>'+nl(p.note)+'</p></div>':'')
+        +'</div>'
+        +'<button class="print-btn" onclick="window.print()">Skriv ut / Lagre som PDF</button>';
+
+      var html='<!DOCTYPE html><html lang="no"><head><meta charset="UTF-8"><title>Tilbud</title><style>'+css+'</style></head><body>'+body+'</body></html>';
+      var blob=new Blob([html],{type:'text/html'});
+      var url=URL.createObjectURL(blob);
+      var win=window.open(url,'_blank');
+      setTimeout(function(){URL.revokeObjectURL(url);},30000);
+    };;
+
+        window.doSendCalcToOffer=function(){
+      const name=document.getElementById('calcPostName')?.value.trim();
+      closeModal();
+      addCalcPost(name);
+    };
+
+        window.resetTotalHours=function(){
+      const p=getProject(currentProjectId); if(!p) return;
+      p.work.hoursOverride=0;
+      persistAndUpdate();
+    };
+
+        window.toggleMalerSection=function(){
+      const el=document.getElementById('malerContent');
+      const icon=document.getElementById('malerToggleIcon');
+      if(!el) return;
+      const hidden=el.style.display==='none';
+      el.style.display=hidden?'':'none';
+      if(icon) icon.textContent=hidden?'▼':'▶';
+    };
+
+        window.updateCalcModalHours=function(val){
+      const p=getProject(currentProjectId); if(!p||!p.offerPosts) return;
+      const post=p.offerPosts.find(x=>x.id===window._cpmPostId); if(!post) return;
+      post.hours=Number(val)||0;
+      persistAndUpdate();
+    };
+
+        window.addFromCatalogToCalcModal=function(itemId){
+      const p=getProject(currentProjectId);
+      const item=getCatalogItem(itemId); if(!item) return;
+      window._cpm.push({
+        id:(Math.random().toString(36).slice(2,10)),
+        name:item.productName||item.name,
+        itemNo:item.itemNo||'',
+        unit:item.unit||'stk',
+        cost:item.userPrice||0,
+        waste:0,
+        markup:p?p.settings.materialMarkup:20
+      });
+      window._cpmSearch='';
+      rerenderCalcModal();
+    };
+
+    // ---- MATERIALKALKULATOR ----
+    const difficultyFactors = {
+      enkel:    {label:'Enkel',   factor:0.85, desc:'God tilkomst, rett flate'},
+      normal:   {label:'Normal',  factor:1.0,  desc:'Standard forhold'},
+      vanskelig:{label:'Vanskelig',factor:1.25, desc:'Høyde, skråtak, trangt'},
+      ekstremt: {label:'Ekstremt',factor:1.5,  desc:'Særlig krevende forhold'},
+    };
+
+    const calcDefaults = {
+      terrasse:      {tPerM2:2.5,  label:'t/m²'},
+      kledning:      {tPerM2:1.3,  label:'t/m²'},
+      tak:           {tPerM2:1.8,  label:'t/m²'},
+      lettvegg:      {tPerM2:1.0,  label:'t/m²'},
+      etterisolering:{tPerM2:0.9,  label:'t/m²'},
+      vindu:         {tPerM2:4.0,  label:'t/stk'},
+      gulv:          {tPerM2:0.8,  label:'t/m²'},
+      panel:         {tPerM2:1.1,  label:'t/m²'},
+      dor:           {tPerM2:3.0,  label:'t/stk'},
+      trapp:         {tPerM2:16.0, label:'t/stk'},
+      bad:           {tPerM2:2.5,  label:'t/m²'},
+    };
+    function getCalcRate(type){
+      const user=(state.calcRates||{})[type];
+      return user!=null ? user : calcDefaults[type]?.tPerM2 ?? 1;
+    }
+
+    const calcDefs = {
+      terrasse: {
+        label:'Terrasse',
+        materialOptions:[
+          {id:'bord',label:'Terrassebord',options:['28×120 impregnert','28×120 trykkimpregnert','28×145 impregnert','45×120 kebony','Kompositt 25×140']},
+          {id:'fundament',label:'Fundamenttype',options:['Punktfundament betong','Skruefundament','Bjelkesko på plate']},
+        ],
+        inputs:[
+          {id:'lengde',label:'Lengde (m)',default:4},
+          {id:'bredde',label:'Bredde (m)',default:3},
+        ],
+        calc(v,mats){
+          const areal=v.lengde*v.bredde;
+          const bordValg=mats.bord||'28×120 impregnert';
+          const breddemm=bordValg.includes('145')?145:bordValg.includes('140')?140:120;
+          const lmPerM2=1000/breddemm*1.05;
+          const bordLm=Math.ceil(areal*lmPerM2*1.1);
+          const bjelkeLm=Math.ceil((v.bredde/0.6)*v.lengde*1.1);
+          const antFund=Math.ceil(areal/2.5);
+          return {
+            areal:areal.toFixed(1)+' m²',
+            info:`Bord: ${bordValg}`,
+            materialer:[
+              {name:`Terrassebord ${bordValg}`,qty:bordLm,unit:'lm',waste:10},
+              {name:'Bjelkelag 48×198 C24',qty:bjelkeLm,unit:'lm',waste:8},
+              {name:'Fundament / stolpesko',qty:antFund,unit:'stk',waste:0},
+              {name:'Terrasseskruer A2',qty:Math.ceil(areal/4),unit:'pk',waste:0},
+            ],
+            timer:Math.round(areal*getCalcRate('terrasse')),
+          };
+        }
+      },
+      kledning: {
+        label:'Kledning',
+        materialOptions:[
+          {id:'type',label:'Kledningstype',options:['D-fals 19×148','D-fals 19×120','Stående kledning 19×148','Liggende kledning 19×98','Villmarkspanel 19×148']},
+          {id:'isolasjon',label:'Etterisolering',options:['Ingen','50 mm','100 mm']},
+        ],
+        inputs:[
+          {id:'bredde',label:'Veggbredde (m)',default:6},
+          {id:'hoyde',label:'Vegghøyde (m)',default:2.5},
+          {id:'vinduer',label:'Antall åpninger',default:1},
+        ],
+        calc(v,mats){
+          const brutto=v.bredde*v.hoyde;
+          const netto=Math.max(brutto-v.vinduer*1.8,1);
+          const kledType=mats.type||'D-fals 19×148';
+          const breddemm=kledType.includes('98')?98:kledType.includes('120')?120:148;
+          const lmPerM2=1000/breddemm*1.12;
+          const kledningLm=Math.ceil(netto*lmPerM2);
+          const lekterLm=Math.ceil(netto/0.6*1.1);
+          const isolasjon=mats.isolasjon||'Ingen';
+          const ekstraMat=isolasjon!=='Ingen'?[
+            {name:`Isolasjon ${isolasjon}`,qty:Math.ceil(netto/5.76),unit:'pk',waste:5},
+          ]:[];
+          return {
+            areal:netto.toFixed(1)+' m² netto',
+            info:`${kledType}${isolasjon!=='Ingen'?' + '+isolasjon:''}`,
+            materialer:[
+              {name:kledType,qty:kledningLm,unit:'lm',waste:12},
+              {name:'Lekter 23×48',qty:lekterLm,unit:'lm',waste:10},
+              {name:'Vindsperre',qty:Math.ceil(netto/50),unit:'rull',waste:5},
+              {name:'Spiker / skruer utvendig',qty:Math.ceil(netto/10),unit:'pk',waste:0},
+              ...ekstraMat,
+            ],
+            timer:Math.round(netto*getCalcRate('kledning')),
+          };
+        }
+      },
+      tak: {
+        label:'Tak',
+        materialOptions:[
+          {id:'type',label:'Taktype',options:['Takstein betong','Takstein leire','Ståltak / platetak','Shingel','Papp/folie flatt tak']},
+        ],
+        inputs:[
+          {id:'lengde',label:'Takkjelens lengde (m)',default:8},
+          {id:'bredde',label:'Takflatens bredde (m)',default:5},
+          {id:'helning',label:'Takvinkel (grader)',default:22},
+        ],
+        calc(v,mats){
+          const faktor=1/Math.cos(v.helning*Math.PI/180);
+          const areal=v.lengde*v.bredde*faktor;
+          const takType=mats.type||'Takstein betong';
+          return {
+            areal:areal.toFixed(1)+' m²',
+            info:takType,
+            materialer:[
+              {name:takType,qty:Math.ceil(areal*1.1),unit:'m²',waste:10},
+              {name:'Sløyfer og lekter',qty:Math.ceil(areal*1.6),unit:'lm',waste:8},
+              {name:'Undertaksduk',qty:Math.ceil(areal/50),unit:'rull',waste:5},
+              {name:'Beslag / renner',qty:Math.ceil(v.lengde*2/10),unit:'pakke',waste:0},
+            ],
+            timer:Math.round(areal*getCalcRate('tak')),
+          };
+        }
+      },
+      lettvegg: {
+        label:'Lettvegg',
+        materialOptions:[
+          {id:'gips',label:'Gipstype',options:['Standard 13 mm','Brannhemmende 15 mm','Fuktbestandig 13 mm']},
+          {id:'isolasjon',label:'Isolasjon',options:['100 mm mineralull','150 mm mineralull','Ingen']},
+        ],
+        inputs:[
+          {id:'lengde',label:'Vegglengde (m)',default:4},
+          {id:'hoyde',label:'Vegghøyde (m)',default:2.4},
+        ],
+        calc(v,mats){
+          const areal=v.lengde*v.hoyde;
+          const stendere=Math.ceil(v.lengde/0.6)+2;
+          const gipsType=mats.gips||'Standard 13 mm';
+          const gipsPlater=Math.ceil(areal/2.88*2*1.1);
+          const isolType=mats.isolasjon||'100 mm mineralull';
+          const isolMat=isolType!=='Ingen'?[{name:`Mineralull ${isolType.replace(' mineralull','')}`,qty:Math.ceil(areal/5.76),unit:'pk',waste:5}]:[];
+          return {
+            areal:areal.toFixed(1)+' m²',
+            info:`${gipsType} • ${isolType}`,
+            materialer:[
+              {name:'Stender 48×98 C24',qty:stendere,unit:'stk',waste:8},
+              {name:`Gips ${gipsType}`,qty:gipsPlater,unit:'pl',waste:10},
+              ...isolMat,
+              {name:'Gipsskruer båndet',qty:Math.ceil(areal/20),unit:'pk',waste:0},
+            ],
+            timer:Math.round(areal*getCalcRate('lettvegg')),
+          };
+        }
+      },
+      etterisolering: {
+        label:'Etterisolering',
+        materialOptions:[
+          {id:'type',label:'Isolasjonstype',options:['Mineralull','Steinull','Isopor EPS','Trefiberisolasjon']},
+        ],
+        inputs:[
+          {id:'areal',label:'Areal (m²)',default:20},
+          {id:'tykkelse',label:'Tykkelse (mm)',default:50},
+        ],
+        calc(v,mats){
+          const isolType=mats.type||'Mineralull';
+          return {
+            areal:v.areal+' m²',
+            info:`${isolType} ${v.tykkelse} mm`,
+            materialer:[
+              {name:`${isolType} ${v.tykkelse} mm`,qty:Math.ceil(v.areal/5.76),unit:'pk',waste:8},
+              {name:'Lekt 48×48',qty:Math.ceil(v.areal/0.6*1.1),unit:'lm',waste:10},
+              {name:'Dampsperre',qty:Math.ceil(v.areal/50),unit:'rull',waste:5},
+              {name:'Tape / mansjetter',qty:1,unit:'pakke',waste:0},
+            ],
+            timer:Math.round(v.areal*getCalcRate('etterisolering')),
+          };
+        }
+      },
+      vindu: {
+        label:'Vindu',
+        materialOptions:[
+          {id:'type',label:'Vindustype',options:['Standard 2-lags','Energi 3-lags','Fastkarm','Kippvindu']},
+          {id:'foring',label:'Foring',options:['Inkludert foring og lister','Kun montering']},
+        ],
+        inputs:[
+          {id:'antall',label:'Antall vinduer',default:1},
+          {id:'bredde',label:'Bredde (cm)',default:100},
+          {id:'hoyde',label:'Høyde (cm)',default:120},
+        ],
+        calc(v,mats){
+          const omfar=Math.ceil((v.bredde*2+v.hoyde*2)/100*1.2);
+          const foringType=mats.foring||'Inkludert foring og lister';
+          const ekstraMat=foringType.includes('foring')?[
+            {name:'Listverk / foring',qty:omfar*v.antall,unit:'lm',waste:10},
+          ]:[];
+          return {
+            areal:v.antall+' vindu(er)',
+            info:`${mats.type||'Standard 2-lags'} • ${foringType}`,
+            materialer:[
+              {name:'Karmskruer 90 mm',qty:v.antall,unit:'pk',waste:0},
+              {name:'Fugeskum proff',qty:v.antall*2,unit:'stk',waste:0},
+              {name:'Beslag / tetting',qty:v.antall,unit:'pakke',waste:0},
+              ...ekstraMat,
+            ],
+            timer:Math.round(v.antall*getCalcRate('vindu')),
+          };
+        }
+      },
+      gulv: {
+        label:'Gulvlegging',
+        materialOptions:[
+          {id:'type',label:'Gulvtype',options:['Laminat 8 mm','Laminat 12 mm','Parkett 14 mm','Vinyl/LVT','Fliser keramikk','Fliser naturstein']},
+          {id:'underlag',label:'Underlag',options:['Trinnlyd + PE-folie','Selvutjevnende masse','Eksisterende ok']},
+        ],
+        inputs:[
+          {id:'areal',label:'Areal (m²)',default:20},
+        ],
+        calc(v,mats){
+          const gulvType=mats.type||'Laminat 8 mm';
+          const erFlis=gulvType.includes('Flis');
+          const underlagType=mats.underlag||'Trinnlyd + PE-folie';
+          const underlagMat=underlagType.includes('Trinnlyd')?[
+            {name:'Trinnlydmatte',qty:Math.ceil(v.areal*1.1),unit:'m²',waste:5},
+          ]:underlagType.includes('Selvutjevnende')?[
+            {name:'Selvutjevnende masse',qty:Math.ceil(v.areal/20),unit:'sekk',waste:5},
+          ]:[];
+          return {
+            areal:v.areal+' m²',
+            info:gulvType,
+            materialer:[
+              {name:gulvType,qty:Math.ceil(v.areal*1.1),unit:'m²',waste:8},
+              ...underlagMat,
+              {name:erFlis?'Flisklister / fugemasse':'Gulvlister',qty:Math.ceil(Math.sqrt(v.areal)*4),unit:'lm',waste:10},
+            ],
+            timer:Math.round(v.areal*getCalcRate('gulv')),
+          };
+        }
+      },
+      panel: {
+        label:'Innvendig panel',
+        materialOptions:[
+          {id:'type',label:'Paneltype',options:['Kledningspanel 14×121','Furupanel 14×95','Sponplate','Gipsplate 13 mm']},
+          {id:'område',label:'Område',options:['Vegg','Tak','Vegg og tak']},
+        ],
+        inputs:[
+          {id:'areal',label:'Areal (m²)',default:15},
+        ],
+        calc(v,mats){
+          const panelType=mats.type||'Kledningspanel 14×121';
+          const breddemm=panelType.includes('95')?95:panelType.includes('121')?121:120;
+          const lmPerM2=1000/breddemm*1.08;
+          return {
+            areal:v.areal+' m²',
+            info:panelType,
+            materialer:[
+              {name:panelType,qty:Math.ceil(v.areal*lmPerM2),unit:'lm',waste:10},
+              {name:'Lekter 23×48',qty:Math.ceil(v.areal/0.6),unit:'lm',waste:8},
+              {name:'Listverk fotlist',qty:Math.ceil(Math.sqrt(v.areal)*4),unit:'lm',waste:10},
+              {name:'Spiker / dykkert',qty:Math.ceil(v.areal/15),unit:'pk',waste:0},
+            ],
+            timer:Math.round(v.areal*getCalcRate('panel')),
+          };
+        }
+      },
+      dor: {
+        label:'Dørmontering',
+        materialOptions:[
+          {id:'type',label:'Dørtype',options:['Innvendig fyllingsdør','Innvendig glatt dør','Ytterdør','Skyvedør','Dobbeldør']},
+          {id:'arbeid',label:'Arbeidsomfang',options:['Kun montering i åpning','Montering + karmsetting','Komplett inkl. listverk']},
+        ],
+        inputs:[
+          {id:'antall',label:'Antall dører',default:1},
+        ],
+        calc(v,mats){
+          const arbeid=mats.arbeid||'Komplett inkl. listverk';
+          const ekstraMat=arbeid.includes('listverk')?[
+            {name:'Dørlistverk',qty:v.antall*5,unit:'lm',waste:10},
+          ]:[];
+          return {
+            areal:v.antall+' dør(er)',
+            info:`${mats.type||'Innvendig fyllingsdør'} • ${arbeid}`,
+            materialer:[
+              {name:'Karmskruer',qty:v.antall,unit:'pk',waste:0},
+              {name:'Skum / tetting',qty:v.antall,unit:'stk',waste:0},
+              ...ekstraMat,
+            ],
+            timer:Math.round(v.antall*getCalcRate('dor')),
+          };
+        }
+      },
+      trapp: {
+        label:'Trapp',
+        materialOptions:[
+          {id:'type',label:'Trappetype',options:['Enkel rettløpstrapp','L-trapp','Svingt trapp','Spiraltrapp']},
+          {id:'materiale',label:'Materiale',options:['Furu ubehandlet','Eik','Hvitmalt MDF','Stål med tretrinn']},
+        ],
+        inputs:[
+          {id:'antall',label:'Antall etg. steg',default:14},
+          {id:'bredde',label:'Trappens bredde (cm)',default:90},
+        ],
+        calc(v,mats){
+          const trappType=mats.type||'Enkel rettløpstrapp';
+          const mat=mats.materiale||'Furu ubehandlet';
+          return {
+            areal:v.antall+' trinn',
+            info:`${trappType} • ${mat}`,
+            materialer:[
+              {name:`Trinn ${mat}`,qty:v.antall,unit:'stk',waste:2},
+              {name:'Bærebjelke / vange',qty:2,unit:'stk',waste:0},
+              {name:'Rekkverk',qty:Math.ceil(v.antall*0.18),unit:'lm',waste:5},
+              {name:'Håndlist',qty:Math.ceil(v.antall*0.18)+1,unit:'lm',waste:5},
+              {name:'Skruer og festemateriell',qty:1,unit:'pakke',waste:0},
+            ],
+            timer:Math.round(getCalcRate('trapp')),
+          };
+        }
+      },
+      bad: {
+        label:'Bad / våtrom',
+        materialOptions:[
+          {id:'flis',label:'Flisvalg',options:['Standard keramikk','Naturstein','Storformat 60×60','Mosaikk']},
+          {id:'arbeid',label:'Arbeidsomfang',options:['Kun flislegging','Membran + flislegging','Full rehabilitering']},
+        ],
+        inputs:[
+          {id:'areal',label:'Gulvareal (m²)',default:5},
+          {id:'vegghøyde',label:'Vegghøyde (m)',default:2.4},
+          {id:'vegger',label:'Antall vegger å flise',default:4},
+        ],
+        calc(v,mats){
+          const veggAreal=Math.ceil(v.vegghøyde*Math.sqrt(v.areal)*v.vegger);
+          const totAreal=v.areal+veggAreal;
+          const flisType=mats.flis||'Standard keramikk';
+          const arbeid=mats.arbeid||'Membran + flislegging';
+          const ekstraMat=arbeid.includes('Membran')||arbeid.includes('Full')?[
+            {name:'Membran / slukmansjett',qty:1,unit:'pakke',waste:0},
+            {name:'Membranmasse',qty:Math.ceil(totAreal/10),unit:'spann',waste:5},
+          ]:[];
+          return {
+            areal:`${v.areal} m² gulv + ${veggAreal} m² vegg`,
+            info:`${flisType} • ${arbeid}`,
+            materialer:[
+              {name:`Flis ${flisType}`,qty:Math.ceil(totAreal*1.1),unit:'m²',waste:10},
+              {name:'Flislim',qty:Math.ceil(totAreal/5),unit:'sekk',waste:5},
+              {name:'Fugmasse',qty:Math.ceil(totAreal/10),unit:'pk',waste:5},
+              {name:'Plater / underlag',qty:Math.ceil(totAreal*1.05),unit:'m²',waste:8},
+              ...ekstraMat,
+            ],
+            timer:Math.round(v.areal*getCalcRate('bad')),
+          };
+        }
+      },
+    };
+
+    window.saveCalcRate=function(type, val){
+      state.calcRates=state.calcRates||{};
+      state.calcRates[type]=parseFloat(val)||calcDefaults[type]?.tPerM2||1;
+      saveState();
+      runCalcWidget();
+    };
+
+        window.toggleCalcWidget=function(){
+      const el=document.getElementById('calcWidget');
+      if(el) el.classList.toggle('hidden');
+    };
+
+    window.updateCalcWidget=function(){
+      const type=document.getElementById('calcJobType')?.value;
+      const def=calcDefs[type];
+      const inputsEl=document.getElementById('calcInputs');
+      const resultsEl=document.getElementById('calcResults');
+      if(!inputsEl||!resultsEl) return;
+      if(!def){ inputsEl.innerHTML=''; resultsEl.innerHTML=''; return; }
+      inputsEl.innerHTML=`
+        <div style="margin-bottom:12px">
+          <label>Vanskelighetsgrad</label>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            ${Object.entries(difficultyFactors).map(([k,d])=>`
+              <button class="package-btn ${k==='normal'?'user-template':''}" id="diffBtn_${k}"
+                onclick="selectDifficulty('${k}')"
+                style="padding:10px;text-align:center;${k==='normal'?'border-color:#0a84ff;background:#eaf3ff':''}">
+                <div style="font-size:13px;font-weight:800">${d.label}</div>
+                <div style="font-size:11px;color:var(--muted);font-weight:500;margin-top:2px">${d.desc}</div>
+                <div style="font-size:11px;font-weight:700;margin-top:2px;color:var(--blue)">×${d.factor}</div>
+              </button>`).join('')}
+          </div>
+        </div>
+        ${def.materialOptions&&def.materialOptions.length?`
+        <div class="row-3" style="margin-bottom:12px">
+          ${def.materialOptions.map(opt=>`
+            <div>
+              <label>${opt.label}</label>
+              <select id="calcMat_${opt.id}" onchange="runCalcWidget()" style="padding:10px 12px">
+                ${opt.options.map(o=>`<option value="${o}">${o}</option>`).join('')}
+              </select>
+            </div>`).join('')}
+        </div>`:''}
+        <div class="row-3" style="margin-bottom:12px">
+          ${def.inputs.map(inp=>`
+            <div>
+              <label>${inp.label}</label>
+              <input type="number" id="calcInput_${inp.id}" value="${inp.default}" oninput="runCalcWidget()" />
+            </div>`).join('')}
+        </div>`;
+      window._calcDifficulty='normal';
+      runCalcWidget();
+    };
+
+    window.selectDifficulty=function(key){
+      window._calcDifficulty=key;
+      // Update button styles
+      Object.keys(difficultyFactors).forEach(k=>{
+        const btn=document.getElementById('diffBtn_'+k);
+        if(!btn) return;
+        btn.style.borderColor=k===key?'#0a84ff':'';
+        btn.style.background=k===key?'#eaf3ff':'';
+      });
+      runCalcWidget();
+    };
+
+    window.runCalcWidget=function(){
+      const type=document.getElementById('calcJobType')?.value;
+      const def=calcDefs[type];
+      const resultsEl=document.getElementById('calcResults');
+      if(!def||!resultsEl) return;
+      const vals={};
+      def.inputs.forEach(inp=>{
+        vals[inp.id]=parseFloat(document.getElementById('calcInput_'+inp.id)?.value)||inp.default;
+      });
+      const mats={};
+      (def.materialOptions||[]).forEach(opt=>{
+        const el=document.getElementById('calcMat_'+opt.id);
+        if(el) mats[opt.id]=el.value;
+      });
+      const diff=window._calcDifficulty||'normal';
+      const diffFactor=difficultyFactors[diff]?.factor||1;
+      let result;
+      try{ result=def.calc(vals,mats); } catch(e){ console.error(e); return; }
+      const adjustedTimer=Math.round(result.timer*diffFactor);
+      const diffLabel=difficultyFactors[diff]?.label||'Normal';
+      window._lastCalcResult={...result, timer:adjustedTimer};
+      resultsEl.innerHTML=`
+        <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:4px">
+          <div style="font-weight:800;font-size:14px;margin-bottom:4px">📊 Estimat — ${def.label} — ${result.areal}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">${result.info||''} • Vanskelighetsgrad: ${diffLabel} (×${diffFactor})</div>
+          <table style="margin-bottom:12px">
+            <thead><tr><th>Materiale</th><th>Mengde</th><th>Enhet</th><th>Svinn</th></tr></thead>
+            <tbody>
+              ${result.materialer.map(m=>`
+                <tr>
+                  <td>${escapeHtml(m.name)}</td>
+                  <td style="font-weight:700">${m.qty}</td>
+                  <td>${m.unit}</td>
+                  <td>${m.waste}%</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f0f7ff;border-radius:12px;margin-bottom:12px">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--muted)">⏱️ Estimert timebruk</div>
+              ${diffFactor!==1?`<div style="font-size:11px;color:var(--muted)">Basis: ${result.timer}t × ${diffFactor} = ${adjustedTimer}t</div>`:''}
+            </div>
+            <div style="font-size:24px;font-weight:800;color:var(--blue)">${adjustedTimer} timer</div>
+          </div>
+          <button class="btn primary" onclick="doAddCalcResult()">+ Legg til i prosjekt</button>
+        </div>`;
+    };
+
+    window.doAddCalcResult=function(){
+      if(window._lastCalcResult) window.addCalcResultToProject(window._lastCalcResult);
+    };
+
+        window.addCalcResultToProject=function(result){
+      const p=getProject(currentProjectId); if(!p) return;
+      // Add materials with best-effort price lookup
+      const newMats=result.materialer.map(m=>({
+        id:uid(), name:m.name, qty:m.qty, unit:m.unit,
+        cost:lookupPriceForMaterial(m.name)||0,
+        waste:m.waste, markup:p.settings.materialMarkup
+      }));
+      p.materials.push(...newMats);
+      // Store calculator timer → divide by people so hoursTotal = timer
+      p.work.hours = Math.round(result.timer / Math.max(Number(p.work.people)||1, 1));
+      persistAndRenderProject();
+      document.getElementById('calcWidget')?.classList.add('hidden');
+
+      // Check how many are missing price
+      const missing=newMats.filter(m=>m.cost===0);
+      if(missing.length){
+        openCalcPriceLookupModal(missing, p);
+      }
+    };
+
+    function openCalcPriceLookupModal(missingMats, p){
+      let idx=0;
+      function renderStep(){
+        if(idx>=missingMats.length){ closeModal(); persistAndRenderProject(); return; }
+        const m=missingMats[idx];
+        const mat=p.materials.find(x=>x.id===m.id);
+
+        function searchHtml(q){
+          if(!q) return '';
+          const res=searchPriceCatalog(q);
+          if(!res.length) return '<div class="empty" style="padding:8px">Ingen treff</div>';
+          return res.map(item=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:5px">
+              <div>
+                <div style="font-weight:700;font-size:13px">${escapeHtml(item.productName||item.name)}</div>
+                <div style="font-size:11px;color:var(--muted)">${escapeHtml(item.itemNo||'')} • ${escapeHtml(item.unit||'-')} • ${currency(item.userPrice||0)}</div>
+              </div>
+              <button class="btn small primary" onclick="setPriceFromCatalog('${m.id}','${escapeHtml(item.id)}')">Velg</button>
+            </div>`).join('');
+        }
+
+        showModal(`
+          <div class="section-head">
+            <div class="section-title">💰 Sett pris (${idx+1}/${missingMats.length})</div>
+            <button class="btn small secondary" onclick="skipPriceLookup()">Hopp over alle</button>
+          </div>
+          <div style="padding:10px;background:#fffbea;border:1px solid #fde68a;border-radius:12px;margin-bottom:12px">
+            <div style="font-weight:800">${escapeHtml(m.name)}</div>
+            <div style="font-size:12px;color:var(--muted)">${m.qty} ${m.unit} — mangler pris</div>
+          </div>
+          <div style="margin-bottom:8px;display:flex;gap:8px">
+            <input id="calcPriceManual" type="number" placeholder="Skriv inn pris manuelt..."
+              style="flex:1" onchange="setManualPrice('${m.id}',this.value)" />
+            <button class="btn small soft" onclick="setManualPrice('${m.id}',document.getElementById('calcPriceManual').value)">OK</button>
+          </div>
+          <div style="background:#f0f7ff;border:1px solid #cde2ff;border-radius:12px;padding:12px">
+            <label style="margin:0 0 6px">🔍 Søk i prisfil</label>
+            <input id="calcPriceSearch" placeholder="Søk varenummer eller navn..."
+              oninput="document.getElementById('calcPriceResults').innerHTML=window._calcSearchHtml(this.value)" />
+            <div id="calcPriceResults" style="margin-top:8px;max-height:200px;overflow-y:auto"></div>
+          </div>
+          <div class="toolbar" style="margin-top:14px">
+            <button class="btn secondary" onclick="skipOnePriceLookup()">Hopp over denne</button>
+          </div>
+        `);
+
+        window._calcSearchHtml=searchHtml;
+        window._calcMissingMats=missingMats;
+        window._calcPriceIdx=()=>idx;
+        window._calcStep=renderStep;
+        window._calcP=p;
+      }
+
+      window.setPriceFromCatalog=function(matId, itemId){
+        const item=getCatalogItem(itemId); if(!item) return;
+        const mat=p.materials.find(x=>x.id===matId); if(!mat) return;
+        mat.cost=item.userPrice||0;
+        mat.itemNo=item.itemNo||'';
+        mat.name=item.productName||item.name;
+        idx++; renderStep();
+      };
+      window.setManualPrice=function(matId, val){
+        const price=parseFloat(val)||0; if(!price) return;
+        const mat=p.materials.find(x=>x.id===matId); if(!mat) return;
+        mat.cost=price;
+        idx++; renderStep();
+      };
+      window.skipOnePriceLookup=function(){ idx++; renderStep(); };
+      window.skipPriceLookup=function(){ closeModal(); persistAndRenderProject(); };
+
+      renderStep();
+    }
+
+    window.adjustModalHours=function(delta){
+      const p=getProject(currentProjectId); if(!p) return;
+      const postId=window._cpmPostId;
+      const post=postId&&p.offerPosts&&p.offerPosts.find(x=>x.id===postId);
+      const calcHours=post?.snapshotCompute?.hoursTotal||0;
+      // Start from: pending override → saved hours → calc hours (placeholder)
+      const base=window._pendingPostHours!=null
+        ? window._pendingPostHours
+        : (post?.hours||calcHours||0);
+      const newVal=Math.max(0, base+delta);
+      window._pendingPostHours=newVal;
+      const el=document.getElementById('postHoursDisplay');
+      if(el) el.textContent=newVal+'t';
+    };
+
+        window.saveCalcPostMaterials=function(){
+      const p=getProject(currentProjectId); if(!p||!p.offerPosts) return;
+      const post=p.offerPosts.find(x=>x.id===window._cpmPostId); if(!post) return;
+      const mats=window._cpm.map(m=>({...m}));
+      post.snapshotMaterials=mats;
+
+      // Recalculate snapshotCompute from updated materials
+      let matCost=0, matSaleEx=0;
+      mats.forEach(m=>{
+        const qty=Number(m.qty)||1, cost=Number(m.cost)||0;
+        const waste=Number(m.waste)||0, markup=Number(m.markup)||20;
+        const withWaste=qty*cost*(1+waste/100);
+        matCost+=withWaste;
+        matSaleEx+=withWaste*(1+markup/100);
+      });
+
+      // Use pending hours (from ▲▼ buttons) or fall back to existing
+      const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[p.work.risk]||1.1;
+      const timeRate=Number(p.work.timeRate)||850;
+      const internalCost=Number(p.work.internalCost)||0;
+      const prev=post.snapshotCompute||{};
+      // If user changed hours via ▲▼, use that; else keep existing hoursTotal
+      const hoursTotal=window._pendingPostHours!=null
+        ? window._pendingPostHours
+        : (prev.hoursTotal||0);
+      window._pendingPostHours=null;
+      // Recalculate labor from hours
+      const laborSaleEx=hoursTotal*timeRate*riskFactor;
+      const laborCost=hoursTotal*internalCost;
+      const saleEx=laborSaleEx+matSaleEx;
+      const costPrice=laborCost+matCost;
+      const profit=saleEx-costPrice;
+      const margin=saleEx?(profit/saleEx*100):0;
+
+      post.snapshotCompute={
+        hoursTotal,
+        laborSaleEx,
+        laborCost,
+        matSaleEx,
+        matCost,
+        costPrice,
+        saleEx,
+        saleInc:saleEx*1.25,
+        profit,
+        margin
+      };
+      post.hours=hoursTotal; // sync post.hours with snapshot
+      // Update post price to match new total
+      post.price=Math.round(p.settings.vatMode==='inc'?saleEx*1.25:saleEx);
+
+      window._cpmSearch='';
+      closeModal();
+      persistAndRenderProject();
+    };
+
+        function restoreCalcPost(postId){
+      window._pendingPostHours=null;
+      const p=getProject(currentProjectId); if(!p||!p.offerPosts) return;
+      const post=p.offerPosts.find(x=>x.id===postId); if(!post) return;
+      window._cpm=[...(post.snapshotMaterials||[]).map(m=>({...m}))];
+      window._cpmPostId=postId;
+      window._cpmSearch='';
+      renderCalcModal();
+    }
+    window.restoreCalcPost=restoreCalcPost;
+
+        window.quickChangeStatus=function(projectId, newStatus){
+      const p=getProject(projectId); if(!p) return;
+      if(newStatus==='Ferdig'){
+        openProjectCompleteModal(p);
+      } else {
+        p.status=newStatus;
+        p.updatedAt=Date.now();
+        saveState(); renderDashboard();
+      }
+    };
+
+    function openProjectCompleteModal(p){
+      const c=compute(p);
+      showModal(`
+        <div class="section-head">
+          <div class="section-title">✅ Fullfør prosjekt</div>
+          <button class="btn small secondary" onclick="closeModal()">Lukk</button>
+        </div>
+        <div style="background:#edfff4;border:1px solid #b7f0cf;border-radius:14px;padding:12px;margin-bottom:14px;font-size:13px;color:#167a42;font-weight:700">
+          Fyll inn faktiske tall — dette hjelper kalkulatoren å bli bedre over tid.
+        </div>
+        <div class="row">
+          <div><label>Faktiske timer brukt</label><input id="fcActualHours" type="number" placeholder="Estimert: ${c.totalHours||c.hoursTotal}" value="${p.work.actualHours||''}" /></div>
+          <div><label>Faktisk materialkostnad (kr)</label><input id="fcActualMatCost" type="number" placeholder="Estimert: ${Math.round(c.totalMatCost||c.matCost)}" value="${p.actualMatCost||''}" /></div>
+        </div>
+        <div class="row">
+          <div><label>Faktisk totalpris til kunde (kr)</label><input id="fcActualTotal" type="number" placeholder="Tilbudssum: ${Math.round(c.totalSaleEx||c.saleEx)}" value="${p.actualTotal||''}" /></div>
+          <div><label>Antall reklamasjoner / avvik</label><input id="fcIssues" type="number" placeholder="0" value="${p.completionData?.issues||0}" /></div>
+        </div>
+        <label>Notater / læring fra dette prosjektet</label>
+        <textarea id="fcNotes" placeholder="Hva gikk bra? Hva tok lengre tid enn estimert? Tips til neste gang...">${p.completionData?.notes||''}</textarea>
+        <div style="margin-top:14px;padding:12px;background:#f5f8ff;border-radius:14px;border:1px solid #dce8ff">
+          <div style="font-size:13px;font-weight:800;margin-bottom:8px">📊 Avvik fra estimat</div>
+          <div class="row-3" style="font-size:13px">
+            <div>Timer estimert: <strong>${c.totalHours||c.hoursTotal}</strong></div>
+            <div>Materialer estimert: <strong>${currency(c.totalMatCost||c.matCost)}</strong></div>
+            <div>Pris estimert: <strong>${currency(c.totalSaleEx||c.saleEx)}</strong></div>
+          </div>
+        </div>
+        <div class="toolbar" style="margin-top:14px">
+          <button class="btn primary" onclick="saveProjectComplete('${p.id}')">✅ Merk som ferdig og lagre</button>
+          <button class="btn secondary" onclick="closeModal()">Avbryt</button>
+        </div>
+      `);
+    }
+
+    window.saveProjectComplete=function(projectId){
+      const p=getProject(projectId); if(!p) return;
+      const actualHours=Number(document.getElementById('fcActualHours')?.value)||0;
+      const actualMatCost=Number(document.getElementById('fcActualMatCost')?.value)||0;
+      const actualTotal=Number(document.getElementById('fcActualTotal')?.value)||0;
+      const issues=Number(document.getElementById('fcIssues')?.value)||0;
+      const notes=document.getElementById('fcNotes')?.value||'';
+      if(actualHours) p.work.actualHours=actualHours;
+      p.actualMatCost=actualMatCost;
+      p.actualTotal=actualTotal;
+      p.completionData={issues, notes, completedAt:Date.now()};
+      p.status='Ferdig';
+      p.updatedAt=Date.now();
+      saveState(); closeModal(); renderDashboard();
+    };
+
+    // Material editor for any offer post (fast/option)
+    window.openPostMaterialEditor=function(postId){
+      const p=getProject(currentProjectId); if(!p||!p.offerPosts) return;
+      const post=p.offerPosts.find(x=>x.id===postId); if(!post) return;
+      // Reuse the calc modal system
+      window._cpm=[...(post.snapshotMaterials||[]).map(m=>({...m}))];
+      window._cpmPostId=postId;
+      window._cpmSearch='';
+      renderCalcModal();
+    };
+
+        window.updateOfferHours=function(val){
+      const p=getProject(currentProjectId); if(!p) return;
+      const hours=Number(val)||0;
+      p.work.hours=hours;
+      // Also update snapshotCompute in calc posts proportionally if only one post
+      persistAndRenderProject();
+    };
+
+        window.addSubcontractor=addSubcontractor;
+    window.removeSubcontractor=removeSubcontractor;
+    window.updSubcontractor=updSubcontractor;
+
+        function copyBuiltinTemplate(tplId){
+      const tpl=builtinTemplates.find(t=>t.id===tplId); if(!tpl) return;
+      // Create editable copy with blank itemNo/cost so user fills from prisfil
+      const copy={
+        id:uid(),
+        name:tpl.name + ' (min)',
+        builtIn:false,
+        materials: tpl.materials.map(m=>({
+          id:uid(),
+          name:m.name,
+          itemNo:'',
+          unit:m.unit||'stk',
+          cost:0,
+          waste:m.waste||0
+        }))
+      };
+      openTemplateModal(copy);
+    }
+    window.copyBuiltinTemplate=copyBuiltinTemplate;
+
+        window.switchTab=switchTab;
+
+
+
+    function renderPostExtra(post){
+      var id=post.id;
+      if(post.type==='option'){
+        var chk=post.enabled?'checked':'';
+        return '<label style="display:flex;align-items:center;gap:8px;margin-top:34px">'
+          +'<input style="width:auto" type="checkbox" '+chk
+          +' onchange="togglePost(\x27'+id+'\x27,this.checked)" /> Valgt opsjon</label>';
+      } else if(post.type==='calc'){
+        return '<div style="margin-top:6px;font-size:12px;color:var(--muted)">📦 Materialer + ⏱️ arbeid inkludert</div>'
+          +'<button class="btn small soft" style="font-size:12px;margin-top:6px" onclick="restoreCalcPost(\x27'+id+'\x27)">✏️ Tilpass</button>';
+      } else {
+        return '<div style="margin-top:8px">'
+          +'<button class="btn small secondary" style="font-size:12px" onclick="openPostMaterialEditor(\x27'+id+'\x27)">✏️ Tilpass</button>'
+          +'</div>';
+      }
+    }
+
+        function renderOfferPosts(p){
+      if(!p.offerPosts) p.offerPosts=[];
+      if(!p.offerPosts.length) return `<div class="empty">Ingen tilbudsposter lagt til enda.</div>`;
+      const vatLbl='eks. mva';
+      return p.offerPosts.map(post=>{
+        const isOpen=post._open===true; // default closed
+        const typeLabel=post.type==='calc'?'Kalkyle':post.type==='option'?'Opsjon':'Fast';
+
+        const header=`<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;background:${isOpen?'#f8faff':'#fff'};border-radius:${isOpen?'14px 14px 0 0':'14px'}" onclick="toggleOfferPost('${post.id}')">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-weight:800;font-size:14px">${escapeHtml(post.name||'Ny post')}</span>
+              <span style="font-size:11px;color:var(--muted);background:#f0f0f0;border-radius:4px;padding:1px 6px">${typeLabel}</span>
+              ${post.type==='option'&&post.enabled?'<span style="font-size:11px;background:#edfff4;color:#167a42;border-radius:4px;padding:1px 6px;font-weight:700">✅ Valgt</span>':''}
+            </div>
+            ${post.description&&!isOpen?`<div style="font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(post.description)}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:17px;font-weight:800;color:${post.type==='option'&&!post.enabled?'var(--muted)':'#0a84ff'}">${currency(displayVatValue(p,post.price||0))}</div>
+            <div style="font-size:10px;color:var(--muted)">${vatLbl}</div>
+          </div>
+          <div style="color:var(--muted);font-size:13px;margin-left:2px">${isOpen?'▲':'▼'}</div>
+        </div>`;
+
+        const body=isOpen?`<div style="padding:12px 14px 14px;border-top:1px solid var(--line)">
+          <div class="row-3">
+            <div><label>Navn</label><input value="${escapeAttr(post.name||'')}" onchange="updatePost('${post.id}','name',this.value)" /></div>
+            <div><label>Type</label><select onchange="updatePost('${post.id}','type',this.value)">
+              <option value="fast" ${post.type==='fast'?'selected':''}>Fastpris</option>
+              <option value="calc" ${post.type==='calc'?'selected':''}>Kalkyle</option>
+              <option value="option" ${post.type==='option'?'selected':''}>Opsjon</option>
+            </select></div>
+            <div><label>Pris ${vatLbl}</label>
+              ${post.type==='calc'
+                ? `<div style="padding:12px 14px;background:#f5f8ff;border:1px solid #dce8ff;border-radius:14px;font-size:18px;font-weight:800">${currency(displayVatValue(p,post.price||0))} <span style="font-size:11px;color:var(--muted);font-weight:500">🔒</span></div>`
+                : `<input type="number" value="${post.price||0}" onchange="updatePost('${post.id}','price',this.value)" />`
+              }
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div><label>Beskrivelse</label><input value="${escapeAttr(post.description||'')}" onchange="updatePost('${post.id}','description',this.value)" /></div>
+            <div>${renderPostExtra(post)}</div>
+          </div>
+          <div class="inline-actions" style="margin-top:10px;justify-content:flex-end">
+            <button class="btn small secondary" onclick="movePost('${post.id}',-1)">↑</button>
+            <button class="btn small secondary" onclick="movePost('${post.id}',1)">↓</button>
+            <button class="btn small danger" onclick="removePost('${post.id}')">Slett</button>
+          </div>
+        </div>`:'';
+
+        return `<div style="border:1.5px solid ${isOpen?'#bcd0f0':'var(--line)'};border-radius:14px;overflow:hidden;background:#fff;margin-bottom:6px">${header}${body}</div>`;
+      }).join('');
+    }
+
+    function computeOfferPostsTotal(p){
+      if(!p.offerPosts||!p.offerPosts.length) return {fixed:0,options:0,total:0,hours:0};
+      let fixed=0,options=0,hours=0;
+      p.offerPosts.forEach(post=>{
+        hours+=Number(post.snapshotCompute?.hoursTotal)||0;
+        const price=Number(post.price)||0;
+        if(post.type==='option'){if(post.enabled)options+=price;}else fixed+=price;
+      });
+      return {fixed,options,total:fixed+options,hours};
+    }
+
+    function addOfferPost(){
+      const p=getProject(currentProjectId); if(!p) return;
+      if(!p.offerPosts) p.offerPosts=[];
+      p.offerPosts.push({id:uid(),name:'Ny post',description:'',type:'fast',price:0,enabled:true});
+      persistAndRenderProject();
+    }
+
+    function addCalcPost(customName){
+      const p=getProject(currentProjectId); if(!p) return;
+      const c=compute(p); if(!p.offerPosts) p.offerPosts=[];
+      const totalPrice=c.saleEx; // always store as eks. mva; display adjusts via displayVatValue
+      const snapshotMats=p.materials.map(m=>({...m}));
+      p.offerPosts.push({
+        id:uid(),
+        name:customName||(p.name||'Kalkyle'),
+        description:`${c.hoursTotal} timer + materialer`,
+        type:'calc',
+        price:Math.round(totalPrice),
+        enabled:true,
+        snapshotMaterials:snapshotMats,
+        snapshotCompute:{
+          hoursTotal:c.hoursTotal,
+          laborSaleEx:c.laborSaleEx,
+          matSaleEx:c.matSaleEx,
+          matCost:c.matCost,
+          laborCost:c.laborCost,
+          costPrice:c.costPrice,
+          saleEx:c.saleEx,
+          saleInc:c.saleInc,
+          profit:c.profit,
+          margin:c.margin
+        }
+      });
+      // Clear materials from list — they live in the post snapshot now
+      p.materials=[];
+      // Reset work hours so they don't double-count with snapshotCompute
+      p.work.hours=0;
+      persistAndRenderProject();
+    }
+
+    window.toggleOfferPost=function(id){
+      const p=getProject(currentProjectId); if(!p||!p.offerPosts) return;
+      const post=p.offerPosts.find(x=>x.id===id); if(!post) return;
+      post._open=(post._open===false)?true:false;
+      persistAndRenderProject();
+    };
+
+        function updatePost(id,key,val){ const p=getProject(currentProjectId); if(!p||!p.offerPosts) return; const post=p.offerPosts.find(x=>x.id===id); if(!post) return; post[key]=key==='price'?parseVatInput(p,val):val; persistAndUpdate(); }
+
+    window.updatePostHours=function(id,val){
+      const p=getProject(currentProjectId); if(!p||!p.offerPosts) return;
+      const post=p.offerPosts.find(x=>x.id===id); if(!post) return;
+      post.hours=Number(val)||0;
+      const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[p.work.risk]||1.1;
+      const timeRate=Number(p.work.timeRate)||850;
+      const hrs=post.hours||post.snapshotCompute?.hoursTotal||0;
+      const matSaleEx=post.snapshotCompute?.matSaleEx||0;
+      post.price=Math.round(hrs*timeRate*riskFactor+matSaleEx);
+      saveState(); updateSummary();
+    };
+    function togglePost(id,val){ const p=getProject(currentProjectId); if(!p||!p.offerPosts) return; const post=p.offerPosts.find(x=>x.id===id); if(!post) return; post.enabled=!!val; persistAndUpdate(); }
+    function removePost(id){ const p=getProject(currentProjectId); if(!p||!p.offerPosts) return; p.offerPosts=p.offerPosts.filter(x=>x.id!==id); persistAndRenderProject(); }
+    function movePost(id,dir){ const p=getProject(currentProjectId); if(!p||!p.offerPosts) return; const idx=p.offerPosts.findIndex(x=>x.id===id); if(idx<0) return; const ni=idx+dir; if(ni<0||ni>=p.offerPosts.length) return; [p.offerPosts[idx],p.offerPosts[ni]]=[p.offerPosts[ni],p.offerPosts[idx]]; persistAndRenderProject(); }
+
+    function bindProjectEvents(){
+      const p=getProject(currentProjectId); if(!p) return;
+      bindVal('#fName',v=>p.name=v);
+      bindVal('#fCustomer',v=>{ p.customerId=v; const cu=getCustomer(v); p.address=cu?(cu.address||''):''; const el=$('#fAddress'); if(el) el.value=p.address; });
+      bindVal('#fAddress',v=>p.address=v); bindVal('#fType',v=>p.type=v); bindVal('#fStart',v=>p.startPref=v);
+      bindVal('#fStatus',v=>p.status=v); bindVal('#fDescription',v=>p.description=v); bindVal('#fNote',v=>p.note=v);
+      const sT=$('#sTimeRate'); if(sT) sT.addEventListener('input',()=>{ p.settings.timeRate=parseVatInput(p,sT.value); p.work.timeRate=p.settings.timeRate; const l=$('#wTimeRate'); if(l&&document.activeElement!==l) l.value=displayVatValue(p,p.work.timeRate); persistAndUpdate(); });
+      const sI=$('#sInternalCost'); if(sI) sI.addEventListener('input',()=>{ p.settings.internalCost=Number(sI.value)||0; p.work.internalCost=p.settings.internalCost; const l=$('#wInternalCost'); if(l&&document.activeElement!==l) l.value=p.work.internalCost; persistAndUpdate(); });
+      const sD=$('#sDriveCost'); if(sD) sD.addEventListener('input',()=>{ p.settings.driveCost=parseVatInput(p,sD.value); p.extras.driveCost=p.settings.driveCost; const l=$('#eDrive'); if(l&&document.activeElement!==l) l.value=displayVatValue(p,p.extras.driveCost); persistAndUpdate(); });
+      bindNum('#wActualHours',v=>p.work.actualHours=v);
+      bindNum('#wLaborHireHours',v=>p.work.laborHireHours=v); bindNumVat('#wLaborHireRate',v=>p.extras.laborHire=v);
+      bindNumVat('#wTimeRate',v=>p.work.timeRate=v); bindNum('#wInternalCost',v=>p.work.internalCost=v); bindVal('#wRisk',v=>p.work.risk=v);
+      bindNum('#eDriftRate',v=>p.extras.driftRate=v);
+      bindNumVat('#eRental',v=>p.extras.rental=v);
+      bindNumVat('#eWaste',v=>p.extras.waste=v); bindNumVat('#eScaffolding',v=>p.extras.scaffolding=v); bindNumVat('#eDrawings',v=>p.extras.drawings=v);
+      // subcontractors handled via onclick
+      bindNum('#eRig',v=>p.extras.rigPercent=v);
+      bindNum('#wMatMarkup',v=>p.settings.materialMarkup=v); bindNumVat('#eMisc',v=>p.extras.misc=v);
+      bindVal('#oValidity',v=>p.offer.validity=v);
+      const pfi=$('#priceFileInput');
+      if(pfi){ pfi.addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importPriceFile(f); e.target.value=''; },{once:true}); }
+      const psi=$('#priceSearchInput');
+      if(psi){ psi.addEventListener('input',()=>renderPriceSearchResults(psi.value)); }
+    }
+
+    function bindVal(sel,fn){ const el=$(sel); if(el) el.addEventListener('input',()=>{ fn(el.value); persistAndUpdate(); }); }
+    function bindNum(sel,fn){ const el=$(sel); if(el) el.addEventListener('input',()=>{ fn(Number(el.value)||0); persistAndUpdate(); }); }
+    function bindNumVat(sel,fn){ const el=$(sel); if(el) el.addEventListener('input',()=>{ fn(parseVatInput(getProject(currentProjectId),el.value)); persistAndUpdate(); }); }
+
+    function toggleStep(n){ const p=getProject(currentProjectId); if(!p) return; if(p.ui.openSteps.includes(n)) p.ui.openSteps=p.ui.openSteps.filter(x=>x!==n); else p.ui.openSteps.push(n); saveState(); renderProjectView(); }
+    function addMaterial(){ const p=getProject(currentProjectId); if(!p) return; p.materials.push({id:uid(),name:'Nytt materiale',qty:1,unit:'stk',cost:0,waste:0,markup:p.settings.materialMarkup}); persistAndRenderProject(); }
+    function updMaterial(id,key,value){ const p=getProject(currentProjectId); if(!p) return; const m=p.materials.find(x=>x.id===id); if(!m) return; m[key]=['qty','cost','waste','markup'].includes(key)?(Number(value)||0):value; persistAndUpdate(); }
+    function removeMaterial(id){ const p=getProject(currentProjectId); if(!p) return; p.materials=p.materials.filter(m=>m.id!==id); persistAndRenderProject(); }
+    function addPackage(idx){ const p=getProject(currentProjectId); if(!p) return; addOnPackages[idx].items.forEach(item=>{ p.materials.push({...item,id:uid(),cost:lookupPriceForMaterial(item.name)||0}); }); persistAndRenderProject(); }
+    function setAllMarkup(v){ const p=getProject(currentProjectId); if(!p) return; p.materials=p.materials.map(m=>({...m,markup:v})); persistAndRenderProject(); }
+    function setAllWaste(v){ const p=getProject(currentProjectId); if(!p) return; p.materials=p.materials.map(m=>({...m,waste:v})); persistAndRenderProject(); }
+    function duplicateLastMaterial(){ const p=getProject(currentProjectId); if(!p||!p.materials.length) return; const last=p.materials[p.materials.length-1]; p.materials.push({...last,id:uid(),name:last.name+' kopi'}); persistAndRenderProject(); }
+    function addCatalogMaterial(id){ const p=getProject(currentProjectId); if(!p) return; const item=getCatalogItem(id); if(!item) return; p.materials.push({id:uid(),name:item.name,qty:1,unit:item.unit||'stk',cost:item.userPrice||0,waste:0,markup:p.settings.materialMarkup,itemNo:item.itemNo||'',regularPrice:item.regularPrice||0,discountPercent:item.discountPercent||0}); rememberRecentCatalog(id); persistAndRenderProject(); const s=$('#priceSearchInput'); if(s) s.value=''; renderPriceSearchResults(''); }
+    function deleteCurrentProject(){ if(!confirm('Slette prosjektet?')) return; state.projects=state.projects.filter(p=>p.id!==currentProjectId); saveState(); openDashboard(); }
+
+
+
+    // Logo file input
+    document.getElementById('logoFileInput')?.addEventListener('change',function(e){
+      const file=e.target.files[0]; if(!file) return;
+      if(file.size>2*1024*1024){ alert('Logo er for stor (maks 2MB)'); return; }
+      const reader=new FileReader();
+      reader.onload=function(ev){
+        state.company.logo=ev.target.result;
+        showLogoPreview(ev.target.result);
+      };
+      reader.readAsDataURL(file);
+      e.target.value='';
+    });
+
+    document.addEventListener('change',function(e){
+      if(e.target.classList.contains('ep-chk')){
+        var epid=e.target.getAttribute('data-epid');
+        if(epid) _offerState.extraPostsChecked[epid]=e.target.checked;
+        renderOfferPreview();
+      }
+    });
+
+    document.addEventListener('click',e=>{
+      const t=e.target;
+      if(t.id==='newCustomerBtn'||t.id==='newCustomerBtn2') openCustomerModal();
+      if(t.id==='newProjectBtn'||t.id==='newProjectBtn2') openProjectModal();
+      if(t.id==='backToDashboard') openDashboard();
+      if(t.id==='saveProjectBtn'){ persistAndRenderProject(); alert('Prosjekt lagret.'); }
+      if(t.id==='deleteProjectBtn') deleteCurrentProject();
+      if(t.id==='settingsBtn') openSettings();
+      if(t.id==='saveSettingsBtn') saveSettings();
+      if(t.id==='backToOverviewBtn'){ $('#settingsView').classList.add('hidden'); $('#dashboardView').classList.remove('hidden'); renderDashboard(); }
+      if(t.id==='backupBtn') exportData();
+      if(t.id==='importBtn') $('#importFile').click();
+      if(t.id==='toggleEx'){ const p=getProject(currentProjectId); if(p){ p.settings.vatMode='ex'; persistAndRenderProject(); } }
+      if(t.id==='toggleInc'){ const p=getProject(currentProjectId); if(p){ p.settings.vatMode='inc'; persistAndRenderProject(); } }
+    });
+    $('#importFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importData(f); e.target.value=''; });
+    $('#customerSearch').addEventListener('input',renderDashboard);
+    $('#projectSearch').addEventListener('input',renderDashboard);
+
+    window.editCustomer=editCustomer; window.deleteCustomer=deleteCustomer; window.openProject=openProject;
+    window.toggleStep=toggleStep; window.updMaterial=updMaterial; window.removeMaterial=removeMaterial;
+    window.addMaterial=addMaterial; window.addPackage=addPackage; window.setAllMarkup=setAllMarkup;
+    window.setAllWaste=setAllWaste; window.addCatalogMaterial=addCatalogMaterial; window.clearPriceCatalog=clearPriceCatalog;
+    window.toggleFavoriteCatalog=toggleFavoriteCatalog; window.duplicateLastMaterial=duplicateLastMaterial;
+    window.applyTemplateById=applyTemplateById; window.openTemplateModal=openTemplateModal; window.deleteUserTemplate=deleteUserTemplate;
+    window.addOfferPost=addOfferPost; window.addCalcPost=addCalcPost; window.updatePost=updatePost;
+    window.togglePost=togglePost; window.removePost=removePost; window.movePost=movePost;
+    window.closeModal=closeModal; window.backdropClose=backdropClose;
+
+    // Hide app until auth verified
+    document.querySelector('.app').style.display='none';
+    initAuth();
