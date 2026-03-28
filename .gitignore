@@ -1,0 +1,24 @@
+# Miljøvariabler og hemmeligheter
+.env
+.env.local
+.env.production
+
+# OS-filer
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (hvis det legges til senere)
+node_modules/
+package-lock.json
+
+# Backups og midlertidige filer
+*.bak
+*.tmp
+*.log

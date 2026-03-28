@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"getElementById.*innerHTML\" /c/Prosjekter/APP/Kalkyleapp/js/*.js)"
+    ]
+  }
+}
