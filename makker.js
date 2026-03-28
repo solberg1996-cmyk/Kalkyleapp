@@ -146,6 +146,7 @@
     var _makkerTool = null; // null = viser hjem-skjerm
     var _trappeType = null; // null = viser typevelger
     var _vangeMode = null;  // null = viser modus-velger for vange
+    var valgtTrappetype = null; // 'vange-mellom' | 'vange-ned' | 'vange-gulv'
     var _vangeTrinn      = 5;     // antall trinn, justeres manuelt
     var _visVangeInfo    = false; // viser/skjuler info-panel i vange-kalkulator
     var _visAvansertVange       = false; // enkel/avansert-visning i vange-kalkulator
@@ -186,6 +187,7 @@
 
     function renderMakkerTool(id){
       if(id==='trapp') return renderTrappModul();
+      if(id==='kledning') return renderKledningTool();
       var t = _makkerTools.find(function(x){ return x.id===id; });
       if(!t) return renderMakkerHome();
       return '<div style="width:100%;max-width:480px;margin:0 auto;padding:24px">'
@@ -209,9 +211,10 @@
       { id: 'loft',    name: 'Loftstrapp',  img: 'img/trapp/utvendig.png'},
     ];
 
-    // Hovedrender — viser typevelger + valgt kalkulator
+    // Hovedrender — viser kalkulator direkte
     function renderTrappModul() {
       if (!_trappeType) _trappeType = 'vange';
+      if (!valgtTrappetype) valgtTrappetype = 'vange-gulv';
       return '<div style="width:100%;max-width:480px;margin:0 auto;padding:24px">'
         + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">'
         + '<button onclick="openMakkerTool(null)" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px">←</button>'
@@ -435,7 +438,14 @@
       var arbBtnTekst = _visVangeArbeidsvisning ? 'Skjul' : 'Arbeidsvisning';
       var arbBtnStil  = 'background:' + (_visVangeArbeidsvisning ? '#1d4ed8' : '#3b82f6') + ';color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;width:100%';
       var arbContDisplay = _visVangeArbeidsvisning ? '' : 'display:none;';
+      var sCard = 'background:#fff;border:1.5px solid #dce8ff;border-radius:12px;padding:12px;text-align:center;cursor:pointer;flex:1';
+      var sCardActive = 'background:#fff;border:2px solid #3b82f6;border-radius:12px;padding:12px;text-align:center;cursor:pointer;flex:1;background:#eff6ff';
       return '<div style="display:flex;flex-direction:column;gap:16px">'
+        + '<div style="display:flex;gap:8px;margin-bottom:4px">'
+        + '<button onclick="velgVangeVariant(\'vange-mellom\')" style="' + (valgtTrappetype === 'vange-mellom' ? sCardActive : sCard) + '"><div style="font-size:24px;margin-bottom:4px">📐</div><div style="font-size:11px;font-weight:700">Åpen</div></button>'
+        + '<button onclick="velgVangeVariant(\'vange-ned\')" style="' + (valgtTrappetype === 'vange-ned' ? sCardActive : sCard) + '"><div style="font-size:24px;margin-bottom:4px">⬇️</div><div style="font-size:11px;font-weight:700">Ned</div></button>'
+        + '<button onclick="velgVangeVariant(\'vange-gulv\')" style="' + (valgtTrappetype === 'vange-gulv' ? sCardActive : sCard) + '"><div style="font-size:24px;margin-bottom:4px">⬆️</div><div style="font-size:11px;font-weight:700">Gulv</div></button>'
+        + '</div>'
         + '<div style="display:flex;justify-content:space-between;align-items:center">'
         + '<div style="font-size:18px;font-weight:800">Vange trapp</div>'
         + '<button id="vangeInfoBtn" onclick="toggleVangeInfo()" style="background:none;border:1.5px solid #dce8ff;border-radius:8px;padding:4px 12px;font-size:13px;cursor:pointer;color:#555">' + btnTekst + '</button>'
@@ -802,6 +812,12 @@
       renderMakkerView();
     };
 
+    // Velg vange-variant og oppdater beregning
+    window.velgVangeVariant = function(id) {
+      valgtTrappetype = id;
+      calcVange();
+    };
+
     // ─────────────────────────────────────────────────────────────────────────
 
     var _trappeTyper = [
@@ -1055,6 +1071,7 @@
         inntrinn = Number(document.getElementById('trappeInntrinn').value);
         if(!hoyde || !ons){ document.getElementById('vangeResultat').innerHTML=''; _vangeTrinn=null; return; }
         _vangeTrinn = Math.max(1, Math.round(hoyde / ons));
+        if (valgtTrappetype !== 'vange-gulv') _vangeTrinn = Math.max(1, _vangeTrinn - 1);
       } else {
         var tot = Number(document.getElementById('vangeAutoTotalHeight').value);
         var ris = Number(document.getElementById('vangeAutoRise').value);
@@ -1062,6 +1079,7 @@
         if(!tot || !ris){ document.getElementById('vangeResultat').innerHTML=''; _vangeTrinn=null; return; }
         hoyde = tot;
         _vangeTrinn = Math.max(1, Math.round(hoyde / (ris * 10)));
+        if (valgtTrappetype !== 'vange-gulv') _vangeTrinn = Math.max(1, _vangeTrinn - 1);
       }
       vangeVisResultat(hoyde, inntrinn);
     };
