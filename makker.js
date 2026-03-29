@@ -143,122 +143,240 @@
     }
 
     // ── KLEDNING BEREGNINGSMOTOR ──────────────────────────────────────────
+    // Modell: Dekningsmål = underliggerBredde + overliggerBredde - 50
+    // Omlegg minimum = 15mm, anbefalt ~25mm
 
-    function lagFeilKledning(feiltekst) {
-      return { feil: true, feiltekst: feiltekst };
-    }
+    function byggLosning(startOver, feltLengde, underliggerBredde, overliggerBredde, ideeltDekningsmaal) {
+      var dekningsmaalCandidate, antallDekningsmaal, antallUnderliggere, antallOverliggere, redusertFeltlengde;
 
-    function beregnStatus(justertOmleggMm, tykkelseMm) {
-      var gronnMin = tykkelseMm + 5;
-      var gronnMax = tykkelseMm + 15;
-      var gulMin1 = tykkelseMm - 5;
-      var gulMax1 = tykkelseMm + 4;
-      var gulMin2 = tykkelseMm + 16;
-      var gulMax2 = tykkelseMm + 25;
-
-      if (justertOmleggMm >= gronnMin && justertOmleggMm <= gronnMax) {
-        return 'grønn';
+      if (startOver) {
+        // Over-over
+        redusertFeltlengde = feltLengde - overliggerBredde;
+      } else {
+        // Under-under
+        redusertFeltlengde = feltLengde - underliggerBredde;
       }
-      if ((justertOmleggMm >= gulMin1 && justertOmleggMm <= gulMax1) ||
-          (justertOmleggMm >= gulMin2 && justertOmleggMm <= gulMax2)) {
-        return 'gul';
-      }
-      return 'rød';
-    }
 
-    function beregnTommermannskledning(input) {
-      var feltLengdeMm = input.feltLengdeMm;
-      var bordbreddeMm = input.bordbreddeMm;
-      var tykkelseMm = input.tykkelseMm;
-      var startStoppType = input.startStoppType;
+      // Test floor
+      dekningsmaalCandidate = Math.floor(redusertFeltlengde / ideeltDekningsmaal);
+      if (dekningsmaalCandidate < 1) dekningsmaalCandidate = 1;
+      antallDekningsmaal = dekningsmaalCandidate;
 
-      if (!feltLengdeMm || feltLengdeMm <= 0) return lagFeilKledning('Feltlengde må være større enn 0');
-      if (!bordbreddeMm || bordbreddeMm <= 0) return lagFeilKledning('Bordbredde må være større enn 0');
-      if (!tykkelseMm || tykkelseMm <= 0) return lagFeilKledning('Tykkelse må være større enn 0');
-      if (!startStoppType) return lagFeilKledning('Start/Stopp-type mangler');
-
-      var redusertFeltlengde = feltLengdeMm - bordbreddeMm;
-      if (redusertFeltlengde <= 0) return lagFeilKledning('Feldlengde må være større enn bordbredde');
-
-      // Ideelt omlegg (overlap) basert på tykkelse
-      var anbefalOmleggMm = tykkelseMm + 10;
-
-      // Antall dekningsmål (spacings)
-      var antallDekningsmaal = Math.ceil(redusertFeltlengde / (bordbreddeMm - anbefalOmleggMm));
-      if (antallDekningsmaal < 1) antallDekningsmaal = 1;
-
-      // Justert dekningsmål
-      var justertDekningsmaalMm = redusertFeltlengde / antallDekningsmaal;
-      var justertOmleggMm = bordbreddeMm - justertDekningsmaalMm;
-
-      // Status basert på overlap og tykkelse
-      var status = beregnStatus(justertOmleggMm, tykkelseMm);
-
-      // Antall underliggere og overliggere
-      var antallUnderliggere = 0;
-      var antallOverliggere = 0;
-
-      if (startStoppType === 'under-under') {
-        antallUnderliggere = antallDekningsmaal + 1;
-        antallOverliggere = antallDekningsmaal;
-      } else if (startStoppType === 'over-over') {
+      if (startOver) {
         antallUnderliggere = antallDekningsmaal;
         antallOverliggere = antallDekningsmaal + 1;
+      } else {
+        antallUnderliggere = antallDekningsmaal + 1;
+        antallOverliggere = antallDekningsmaal;
       }
 
-      // Oppmerkingsliste: position av underliggere
-      var oppmerkingsliste = [];
-      if (startStoppType === 'under-under') {
-        for (var i = 0; i <= antallDekningsmaal; i++) {
-          var pos = i * justertDekningsmaalMm;
-          oppmerkingsliste.push({ nr: i + 1, posisjonMm: pos });
-        }
-      } else if (startStoppType === 'over-over') {
-        for (var i = 0; i < antallDekningsmaal; i++) {
-          var pos = bordbreddeMm + (i * justertDekningsmaalMm);
-          oppmerkingsliste.push({ nr: i + 1, posisjonMm: pos });
-        }
-      }
+      var justertDekningsmaal = redusertFeltlengde / antallDekningsmaal;
 
       return {
-        feil: false,
-        status: status,
-        anbefalOmleggMm: anbefalOmleggMm,
-        justertOmleggMm: justertOmleggMm,
-        ideeltDekningsmaalMm: justertDekningsmaalMm,
-        justertDekningsmaalMm: justertDekningsmaalMm,
+        kandidat: 'floor',
+        antallDekningsmaal: antallDekningsmaal,
         antallUnderliggere: antallUnderliggere,
         antallOverliggere: antallOverliggere,
-        oppmerkingsliste: oppmerkingsliste
+        justertDekningsmaal: justertDekningsmaal
       };
     }
 
+    function beregnTommermannskledning(input) {
+  var feltLengdeMm = input.feltLengdeMm;
+  var underliggerBreddeMm = input.underliggerBreddeMm;
+  var overliggerBreddeMm = input.overliggerBreddeMm;
+  var startType = input.startType;
+  var stoppType = input.stoppType;
+
+  if (!feltLengdeMm || feltLengdeMm <= 0) {
+    return { feil: true, feiltekst: 'Feltlengde må være et positivt tall større enn 0.' };
+  }
+
+  var ideeltDekningsmaalMm = underliggerBreddeMm + overliggerBreddeMm - 50;
+
+  function byggLosning(k) {
+    if (k <= 0) return null;
+
+    var startOver = startType === 'overligger';
+    var sluttOver = stoppType === 'overligger';
+
+    var divisor = 2 * k + (startOver ? 1 : 0) + (sluttOver ? 1 : 0);
+
+    var omlegg =
+      (
+        k * (underliggerBreddeMm + overliggerBreddeMm) +
+        (startOver ? overliggerBreddeMm : 0) +
+        (sluttOver ? overliggerBreddeMm : underliggerBreddeMm) -
+        feltLengdeMm
+      ) / divisor;
+
+    if (omlegg < 15) return null;
+
+    var dekningsmaal = underliggerBreddeMm + overliggerBreddeMm - 2 * omlegg;
+
+    var underAnt = k + 1;
+    var overAnt = underAnt - 1 + (startOver ? 1 : 0) + (sluttOver ? 1 : 0);
+
+    var offset = startOver ? (overliggerBreddeMm - omlegg) : 0;
+
+    var pos = [];
+    for (var i = 0; i < underAnt; i++) {
+      pos.push({
+        nr: i + 1,
+        posisjonMm: i * dekningsmaal + offset
+      });
+    }
+
+    return {
+      antallDekningsmaal: k,
+      justertDekningsmaalMm: dekningsmaal,
+      justertOmleggMm: omlegg,
+      antallUnderliggere: underAnt,
+      antallOverliggere: overAnt,
+      oppmerkingsliste: pos
+    };
+  }
+
+  var ratio = feltLengdeMm / ideeltDekningsmaalMm;
+
+  var a = byggLosning(Math.floor(ratio));
+  var b = byggLosning(Math.ceil(ratio));
+
+  return {
+    feil: false,
+    ideeltDekningsmaalMm: ideeltDekningsmaalMm,
+    anbefalt: a || b,
+    alternativ: null
+  };
+}
+
     // ── KLEDNINGSKALKULATOR ───────────────────────────────────────────────
 
-    var _kledningInput = { feltLengde: 3000, bordBredde: 125, tykkelse: 19, startStopp: 'under-under' };
+    var _kledningInput = {
+      feltLengde: 3000,
+      underliggerBredde: 148,
+      overliggerBredde: 148,
+      startType: 'underligger',
+      stoppType: 'underligger'
+    };
 
     function renderKledningTool() {
       var inp = 'width:100%;padding:10px 14px;border:1.5px solid #dce8ff;border-radius:12px;font-size:16px;box-sizing:border-box';
       var lbl = 'display:block;font-size:13px;font-weight:700;margin-bottom:6px';
       var select = 'width:100%;padding:10px 14px;border:1.5px solid #dce8ff;border-radius:12px;font-size:16px;box-sizing:border-box';
-      return '<div style="width:100%;max-width:480px;margin:0 auto;padding:24px"><div style="display:flex;align-items:center;gap:12px;margin-bottom:20px"><button onclick="openMakkerTool(null)" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px">←</button><div><div style="font-size:22px;font-weight:800">🪵 Kledningskalkulator</div></div></div><div style="background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px"><div style="display:grid;gap:14px"><div><label style="' + lbl + '">Feltlengde (mm)</label><input id="kledFeltlengde" type="number" value="' + _kledningInput.feltLengde + '" oninput="calcKledning()" style="' + inp + '" /></div><div><label style="' + lbl + '">Bordbredde (mm)</label><input id="kledBordbredde" type="number" value="' + _kledningInput.bordBredde + '" oninput="calcKledning()" style="' + inp + '" /></div><div><label style="' + lbl + '">Tykkelse (mm)</label><input id="kledTykkelse" type="number" value="' + _kledningInput.tykkelse + '" oninput="calcKledning()" style="' + inp + '" /></div><div><label style="' + lbl + '">Start / Stopp</label><select id="kledStartStopp" onchange="calcKledning()" style="' + select + '"><option value="under-under" ' + (_kledningInput.startStopp === 'under-under' ? 'selected' : '') + '>Underligger → Underligger</option><option value="over-over" ' + (_kledningInput.startStopp === 'over-over' ? 'selected' : '') + '>Overligger → Overligger</option></select></div></div></div><div id="kledResultat"></div></div>';
+
+      return '<div style="width:100%;max-width:480px;margin:0 auto;padding:24px">'
+        + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">'
+        + '<button onclick="openMakkerTool(null)" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px">←</button>'
+        + '<div><div style="font-size:22px;font-weight:800">🪵 Kledningskalkulator</div></div>'
+        + '</div>'
+
+        + '<div style="background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px">'
+        + '<div style="display:grid;gap:14px">'
+
+        + '<div><label style="' + lbl + '">Feltlengde (mm)</label>'
+        + '<input id="kledFeltlengde" type="number" value="' + _kledningInput.feltLengde + '" oninput="calcKledning()" style="' + inp + '" /></div>'
+
+        + '<div><label style="' + lbl + '">Underligger-bredde (mm)</label>'
+        + '<input id="kledUnderligger" type="number" value="' + _kledningInput.underliggerBredde + '" oninput="calcKledning()" style="' + inp + '" /></div>'
+
+        + '<div><label style="' + lbl + '">Overligger-bredde (mm)</label>'
+        + '<input id="kledOverligger" type="number" value="' + _kledningInput.overliggerBredde + '" oninput="calcKledning()" style="' + inp + '" /></div>'
+
+        + '<div><label style="' + lbl + '">Start med</label>'
+        + '<select id="kledStartType" onchange="calcKledning()" style="' + select + '">'
+        + '<option value="underligger" ' + (_kledningInput.startType === 'underligger' ? 'selected' : '') + '>Underligger</option>'
+        + '<option value="overligger" ' + (_kledningInput.startType === 'overligger' ? 'selected' : '') + '>Overligger</option>'
+        + '</select></div>'
+
+        + '<div><label style="' + lbl + '">Avslutt med</label>'
+        + '<select id="kledStoppType" onchange="calcKledning()" style="' + select + '">'
+        + '<option value="underligger" ' + (_kledningInput.stoppType === 'underligger' ? 'selected' : '') + '>Underligger</option>'
+        + '<option value="overligger" ' + (_kledningInput.stoppType === 'overligger' ? 'selected' : '') + '>Overligger</option>'
+        + '</select></div>'
+
+        + '</div>'
+        + '</div>'
+
+        + '<div id="kledResultat"></div>'
+        + '</div>';
     }
     console.log('renderKledningTool definert', typeof renderKledningTool);
 
     window.calcKledning = function() {
+      if (!document.getElementById('kledFeltlengde')) return;
+
       _kledningInput.feltLengde = Number(document.getElementById('kledFeltlengde').value);
-      _kledningInput.bordBredde = Number(document.getElementById('kledBordbredde').value);
-      _kledningInput.tykkelse = Number(document.getElementById('kledTykkelse').value);
-      _kledningInput.startStopp = document.getElementById('kledStartStopp').value;
-      var res = beregnTommermannskledning({ feltLengdeMm: _kledningInput.feltLengde, bordbreddeMm: _kledningInput.bordBredde, tykkelseMm: _kledningInput.tykkelse, startStoppType: _kledningInput.startStopp });
+      _kledningInput.underliggerBredde = Number(document.getElementById('kledUnderligger').value);
+      _kledningInput.overliggerBredde = Number(document.getElementById('kledOverligger').value);
+      _kledningInput.startType = document.getElementById('kledStartType').value;
+      _kledningInput.stoppType = document.getElementById('kledStoppType').value;
+
+      var res = beregnTommermannskledning({
+        feltLengdeMm: _kledningInput.feltLengde,
+        underliggerBreddeMm: _kledningInput.underliggerBredde,
+        overliggerBreddeMm: _kledningInput.overliggerBredde,
+        startType: _kledningInput.startType,
+        stoppType: _kledningInput.stoppType
+      });
+
       var el = document.getElementById('kledResultat');
       if (!el) return;
-      if (res.feil) { el.innerHTML = '<div style="background:#fee;border:1.5px solid #c33;border-radius:14px;padding:16px;color:#c33;font-weight:700">' + res.feiltekst + '</div>'; return; }
-      var h = '<div style="background:#f5f8ff;border:1.5px solid #dce8ff;border-radius:14px;padding:16px;margin-top:16px"><div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Status</span><span style="font-size:18px;font-weight:800;color:' + (res.status === 'grønn' ? '#167a42' : (res.status === 'gul' ? '#f0a202' : '#c0392b')) + '">● ' + res.status + '</span></div><div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #dce8ff"><span style="font-size:13px;font-weight:700;color:#888">Anbefalt omlegg</span><span style="font-size:16px;font-weight:800">' + res.anbefalOmleggMm.toFixed(1) + ' mm</span></div><div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Justert omlegg</span><span style="font-size:16px;font-weight:800">' + res.justertOmleggMm.toFixed(1) + ' mm</span></div><div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Ideelt dekningsmål</span><span style="font-size:16px;font-weight:800">' + res.ideeltDekningsmaalMm.toFixed(1) + ' mm</span></div><div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Justert dekningsmål</span><span style="font-size:16px;font-weight:800">' + res.justertDekningsmaalMm.toFixed(1) + ' mm</span></div><div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #dce8ff"><span style="font-size:13px;font-weight:700;color:#888">Underliggere</span><span style="font-size:16px;font-weight:800">' + res.antallUnderliggere + '</span></div><div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Overliggere</span><span style="font-size:16px;font-weight:800">' + res.antallOverliggere + '</span></div></div><div style="background:#fff;border:1.5px solid #dce8ff;border-radius:14px;padding:16px;margin-top:16px"><div style="font-size:13px;font-weight:700;margin-bottom:14px">Oppmerkingsliste</div><div style="font-size:12px;line-height:1.8">';
-      if (res.oppmerkingsliste && res.oppmerkingsliste.length > 0) { for (var i = 0; i < res.oppmerkingsliste.length; i++) { var m = res.oppmerkingsliste[i]; h += 'U' + m.nr + ' @ ' + m.posisjonMm.toFixed(1) + ' mm<br>'; } } else { h += 'Ingen oppmerking'; }
+
+      if (res.feil) {
+        el.innerHTML =
+          '<div style="background:#fee;border:1.5px solid #c33;border-radius:14px;padding:16px;color:#c33;font-weight:700">'
+          + res.feiltekst +
+          '</div>';
+        return;
+      }
+
+      var a = res.anbefalt;
+      var alt = res.alternativ;
+
+      var h = ''
+        + '<div style="background:#f5f8ff;border:1.5px solid #dce8ff;border-radius:14px;padding:16px;margin-top:16px">'
+        + '<div style="font-size:18px;font-weight:800;margin-bottom:12px">Foreslått løsning</div>'
+        + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Dekningsmål</span><span style="font-size:16px;font-weight:800">' + (a.justertDekningsmaalMm / 10).toFixed(1) + ' cm</span></div>'
+        + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Omlegg</span><span style="font-size:16px;font-weight:800">' + (a.justertOmleggMm / 10).toFixed(1) + ' cm</span></div>'
+        + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Ideelt dekningsmål</span><span style="font-size:16px;font-weight:800">' + (res.ideeltDekningsmaalMm / 10).toFixed(1) + ' cm</span></div>'
+        + '<div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #dce8ff;margin-top:10px"><span style="font-size:13px;font-weight:700;color:#888">Underliggere</span><span style="font-size:16px;font-weight:800">' + a.antallUnderliggere + '</span></div>'
+        + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Overliggere</span><span style="font-size:16px;font-weight:800">' + a.antallOverliggere + '</span></div>'
+        + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Totalt bord</span><span style="font-size:16px;font-weight:800">' + (a.antallUnderliggere + a.antallOverliggere) + '</span></div>'
+        + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Dekningsmål totalt</span><span style="font-size:16px;font-weight:800">' + a.antallDekningsmaal + '</span></div>'
+        + '</div>';
+
+      if (alt) {
+        h += ''
+          + '<div style="background:#fff;border:1.5px solid #dce8ff;border-radius:14px;padding:16px;margin-top:16px">'
+          + '<div style="font-size:16px;font-weight:800;margin-bottom:12px">Alternativ løsning</div>'
+          + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Dekningsmål</span><span style="font-size:16px;font-weight:800">' + (alt.justertDekningsmaalMm / 10).toFixed(1) + ' cm</span></div>'
+          + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Omlegg</span><span style="font-size:16px;font-weight:800">' + (alt.justertOmleggMm / 10).toFixed(1) + ' cm</span></div>'
+          + '<div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #dce8ff;margin-top:10px"><span style="font-size:13px;font-weight:700;color:#888">Underliggere</span><span style="font-size:16px;font-weight:800">' + alt.antallUnderliggere + '</span></div>'
+          + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Overliggere</span><span style="font-size:16px;font-weight:800">' + alt.antallOverliggere + '</span></div>'
+          + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Totalt bord</span><span style="font-size:16px;font-weight:800">' + (alt.antallUnderliggere + alt.antallOverliggere) + '</span></div>'
+          + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Dekningsmål totalt</span><span style="font-size:16px;font-weight:800">' + alt.antallDekningsmaal + '</span></div>'
+          + '</div>';
+      }
+
+      h += '<div style="background:#fff;border:1.5px solid #dce8ff;border-radius:14px;padding:16px;margin-top:16px">';
+      h += '<div style="font-size:13px;font-weight:700;margin-bottom:14px">Utdelingsmål</div>';
+      h += '<div style="font-size:12px;line-height:1.8">';
+
+      if (a.oppmerkingsliste && a.oppmerkingsliste.length > 0) {
+        for (var i = 0; i < a.oppmerkingsliste.length; i++) {
+          var m = a.oppmerkingsliste[i];
+          h += 'U' + m.nr + ' @ ' + (m.posisjonMm / 10).toFixed(1) + ' cm<br>';
+        }
+      } else {
+        h += 'Ingen oppmerking';
+      }
+
       h += '</div></div>';
+
       el.innerHTML = h;
     };
+
 
     // ── MAKKER ───────────────────────────────────────────────────────────────
 
@@ -275,14 +393,19 @@
       { id: 'trapp',    icon: '🪜', name: 'Trappekalkulator',   desc: 'Beregn stigning, inntrinn og antall trinn' },
       { id: 'spile',    icon: '📏', name: 'Spilekalkulator',    desc: 'Beregn spileavstand og antall spiler' },
       { id: 'vinkel',   icon: '📐', name: 'Vinkelkalkulator',   desc: 'Beregn vinkler og lengder' },
-      { id: 'kledning', icon: '🪵', name: 'Kledningskalkulator',desc: 'Beregn kledningsbehov og svinn' },
+      { id: 'kledning', icon: '🪵', name: 'Tømmermannskledning',desc: 'Beregn tømmermannskledning' },
     ];
 
     function renderMakkerView(){
-      var el = document.getElementById('makkContent');
-      if(!el) return;
-      el.innerHTML = _makkerTool ? renderMakkerTool(_makkerTool) : renderMakkerHome();
-    }
+  var el = document.getElementById('makkContent');
+  if(!el) return;
+
+  el.innerHTML = _makkerTool ? renderMakkerTool(_makkerTool) : renderMakkerHome();
+
+  if (_makkerTool === 'kledning' && typeof window.calcKledning === 'function') {
+    window.calcKledning();
+  }
+}
 
     function renderMakkerHome(){
       return '<div style="width:100%;max-width:480px;margin:0 auto;padding:24px">'
