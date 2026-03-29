@@ -180,7 +180,8 @@
         justertDekningsmaal: justertDekningsmaal
       };
     }
-
+// ⚠️ IKKE ENDRE beregnTommermannskledning uten å kjøre testKledningMedFasit()
+// Denne funksjonen matcher ekstern kalkulator 1:1
 function beregnTommermannskledning(input) {
   var L = input.feltLengdeMm;
   var U = input.underliggerBreddeMm;
@@ -339,6 +340,82 @@ var ratio = justertLengde / ideeltDekningsmaalMm;
     anbefalt: a || b,
     alternativ: null
   };
+}
+
+function testKledningMedFasit() {
+  var tester = [
+    {
+      navn: 'Over -> Under',
+      input: {
+        feltLengdeMm: 6213,
+        underliggerBreddeMm: 148,
+        overliggerBreddeMm: 148,
+        startType: 'overligger',
+        stoppType: 'underligger'
+      },
+      forventet: {
+        dekningsmaalCm: '24.8',
+        omleggCm: '2.4',
+        under: 25,
+        over: 25,
+        dekningsmaalTotalt: 24
+      }
+    },
+    {
+      navn: 'Over -> Over',
+      input: {
+        feltLengdeMm: 6213,
+        underliggerBreddeMm: 148,
+        overliggerBreddeMm: 148,
+        startType: 'overligger',
+        stoppType: 'overligger'
+      },
+      forventet: {
+        dekningsmaalCm: '24.9',
+        omleggCm: '2.4',
+        under: 25,
+        over: 26,
+        dekningsmaalTotalt: 24
+      }
+    }
+  ];
+
+  console.log('--- TEST MED FASIT START ---');
+
+  for (var i = 0; i < tester.length; i++) {
+    var t = tester[i];
+    var res = beregnTommermannskledning(t.input);
+
+    if (!res || res.feil || !res.anbefalt) {
+      console.error(t.navn + ': FEIL', res);
+      continue;
+    }
+
+    var faktisk = {
+      dekningsmaalCm: (res.anbefalt.justertDekningsmaalMm / 10).toFixed(1),
+      omleggCm: (res.anbefalt.justertOmleggMm / 10).toFixed(1),
+      under: res.anbefalt.antallUnderliggere,
+      over: res.anbefalt.antallOverliggere,
+      dekningsmaalTotalt: res.anbefalt.antallDekningsmaal
+    };
+
+    var ok =
+      faktisk.dekningsmaalCm === t.forventet.dekningsmaalCm &&
+      faktisk.omleggCm === t.forventet.omleggCm &&
+      faktisk.under === t.forventet.under &&
+      faktisk.over === t.forventet.over &&
+      faktisk.dekningsmaalTotalt === t.forventet.dekningsmaalTotalt;
+
+    if (ok) {
+      console.log('✅ ' + t.navn + ' OK', faktisk);
+    } else {
+      console.error('❌ ' + t.navn + ' FEIL');
+      console.log('Forventet:', t.forventet);
+      console.log('Faktisk:', faktisk);
+    }
+  }
+
+  console.log('--- TEST MED FASIT SLUTT ---');
 }
 
     // ── KLEDNINGSKALKULATOR ───────────────────────────────────────────────
