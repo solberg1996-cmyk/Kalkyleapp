@@ -429,47 +429,206 @@ var _kledningInput = {
 };
 
 function renderKledningTool() {
-  var inp = 'width:100%;padding:10px 14px;border:1.5px solid #dce8ff;border-radius:12px;font-size:16px;box-sizing:border-box';
-  var lbl = 'display:block;font-size:13px;font-weight:700;margin-bottom:6px';
-  var select = 'width:100%;padding:10px 14px;border:1.5px solid #dce8ff;border-radius:12px;font-size:16px;box-sizing:border-box';
+  var inp = 'width:100%;padding:12px 14px;border:1.5px solid #e0e8f5;border-radius:10px;font-size:16px;box-sizing:border-box;font-family:inherit;background:#f9fafe';
+  var lbl = 'display:block;font-size:12px;font-weight:700;margin-bottom:8px;color:#555;text-transform:uppercase;letter-spacing:0.3px';
+  var select = 'width:100%;padding:12px 14px;border:1.5px solid #e0e8f5;border-radius:10px;font-size:16px;box-sizing:border-box;font-family:inherit;background:#f9fafe';
+  var helperText = 'display:block;font-size:11px;color:#999;margin-top:4px;font-weight:500';
 
-  return '<div style="width:100%;max-width:480px;margin:0 auto;padding:24px">'
-    + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">'
-    + '<button onclick="openMakkerTool(null)" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px">←</button>'
-    + '<div><div style="font-size:22px;font-weight:800">🪵 Kledningskalkulator</div></div>'
+  return '<div style="width:100%;max-width:540px;margin:0 auto;padding:20px 16px">'
+
+    // Header
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;gap:12px">'
+    + '<div style="display:flex;align-items:center;gap:10px;flex:1">'
+    + '<button onclick="openMakkerTool(null)" style="background:none;border:none;color:#999;font-size:24px;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center">←</button>'
+    + '<h1 style="font-size:20px;font-weight:800;margin:0;color:#1a1a1a">🪵 Tømmermann-kledning</h1>'
+    + '</div>'
+    + '<button onclick="openKledningInfoModal()" style="background:none;border:none;color:#999;font-size:20px;cursor:pointer;padding:8px;display:flex;align-items:center;justify-content:center;transition:color 0.2s">ℹ️</button>'
     + '</div>'
 
-    + '<div style="background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px">'
-    + '<div style="display:grid;gap:14px">'
+    // Input Card
+    + '<div style="background:#fff;border:1.5px solid #e8eef7;border-radius:14px;padding:20px;margin-bottom:24px;box-shadow:0 2px 8px rgba(0,0,0,0.04)">'
+    + '<div style="display:grid;gap:16px">'
 
-    + '<div><label style="' + lbl + '">Feltlengde (mm)</label>'
-    + '<input id="kledFeltlengde" type="number" value="' + _kledningInput.feltLengde + '" oninput="calcKledning()" style="' + inp + '" /></div>'
+    + '<div>'
+    + '<label style="' + lbl + '">Feltlengde</label>'
+    + '<input id="kledFeltlengde" type="number" value="' + _kledningInput.feltLengde + '" oninput="calcKledning()" style="' + inp + '" placeholder="3000" />'
+    + '<span style="' + helperText + '">Høyde fra underkant til øverkant (mm)</span>'
+    + '</div>'
 
-    + '<div><label style="' + lbl + '">Underligger-bredde (mm)</label>'
-    + '<input id="kledUnderligger" type="number" value="' + _kledningInput.underliggerBredde + '" oninput="calcKledning()" style="' + inp + '" /></div>'
+    + '<div>'
+    + '<label style="' + lbl + '">Underligger-bredde</label>'
+    + '<input id="kledUnderligger" type="number" value="' + _kledningInput.underliggerBredde + '" oninput="calcKledning()" style="' + inp + '" placeholder="125" />'
+    + '<span style="' + helperText + '">Bredde på underligger (mm)</span>'
+    + '</div>'
 
-    + '<div><label style="' + lbl + '">Overligger-bredde (mm)</label>'
-    + '<input id="kledOverligger" type="number" value="' + _kledningInput.overliggerBredde + '" oninput="calcKledning()" style="' + inp + '" /></div>'
+    + '<div>'
+    + '<label style="' + lbl + '">Overligger-bredde</label>'
+    + '<input id="kledOverligger" type="number" value="' + _kledningInput.overliggerBredde + '" oninput="calcKledning()" style="' + inp + '" placeholder="100" />'
+    + '<span style="' + helperText + '">Bredde på overligger (mm)</span>'
+    + '</div>'
 
-    + '<div><label style="' + lbl + '">Start med</label>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+    + '<div>'
+    + '<label style="' + lbl + '">Start med</label>'
     + '<select id="kledStartType" onchange="calcKledning()" style="' + select + '">'
     + '<option value="underligger" ' + (_kledningInput.startType === 'underligger' ? 'selected' : '') + '>Underligger</option>'
     + '<option value="overligger" ' + (_kledningInput.startType === 'overligger' ? 'selected' : '') + '>Overligger</option>'
-    + '</select></div>'
+    + '</select>'
+    + '</div>'
 
-    + '<div><label style="' + lbl + '">Avslutt med</label>'
+    + '<div>'
+    + '<label style="' + lbl + '">Avslutt med</label>'
     + '<select id="kledStoppType" onchange="calcKledning()" style="' + select + '">'
     + '<option value="underligger" ' + (_kledningInput.stoppType === 'underligger' ? 'selected' : '') + '>Underligger</option>'
     + '<option value="overligger" ' + (_kledningInput.stoppType === 'overligger' ? 'selected' : '') + '>Overligger</option>'
-    + '</select></div>'
+    + '</select>'
+    + '</div>'
+    + '</div>'
 
     + '</div>'
     + '</div>'
 
-    + '<div id="kledResultat"></div>'
+    + '<div id="kledResultat" style="min-height:60px;display:flex;align-items:center;justify-content:center">'
+    + '<div style="color:#ccc;font-size:14px">Fylg inn verdier for å beregne...</div>'
+    + '</div>'
+
+    + '</div>'
+
+    + '<div id="kledningInfoModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;overflow:auto" onclick="if(event.target.id===\'kledningInfoModal\')closeKledningInfoModal()">'
+    + '<div style="background:#fff;border-radius:16px;margin:40px auto;padding:24px;max-width:500px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.2)">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    + '<h2 style="font-size:18px;font-weight:800;margin:0">Forklaring av mål og begreper</h2>'
+    + '<button onclick="closeKledningInfoModal()" style="background:none;border:none;font-size:24px;color:#999;cursor:pointer;padding:0">✕</button>'
+    + '</div>'
+    + '<p style="color:#666;font-size:14px;line-height:1.6;margin-bottom:20px">Her er en visuell forklaring av de viktigste målene og begrepene brukt i tømmermannskledning.</p>'
+    + '<div style="display:grid;gap:16px">'
+    + '<div style="text-align:center">'
+    + '<img src="img/kledning-info-1.jpg" style="width:100%;border-radius:8px;background:#f5f5f5" alt="Mål og oppbygging" />'
+    + '<p style="font-size:12px;color:#999;margin-top:8px;margin-bottom:0">Mål og oppbygging</p>'
+    + '</div>'
+    + '<div style="text-align:center">'
+    + '<img src="img/kledning-info-2.jpg" style="width:100%;border-radius:8px;background:#f5f5f5" alt="Begreper og plassering" />'
+    + '<p style="font-size:12px;color:#999;margin-top:8px;margin-bottom:0">Begreper og plassering</p>'
+    + '</div>'
+    + '</div>'
+    + '<button onclick="closeKledningInfoModal()" style="width:100%;padding:12px;margin-top:20px;background:#f0f4ff;border:1.5px solid #d0deff;border-radius:10px;font-weight:700;color:#4a5fc1;cursor:pointer;font-size:14px;transition:all 0.2s">Lukk</button>'
+    + '</div>'
+    + '</div>'
+
     + '</div>';
 }
     console.log('renderKledningTool definert', typeof renderKledningTool);
+
+    // ── Kledning Modal ────────────────────────────────────────────────────
+    window.openKledningInfoModal = function() {
+      var modal = document.getElementById('kledningInfoModal');
+      if (modal) modal.style.display = 'block';
+    };
+
+    window.closeKledningInfoModal = function() {
+      var modal = document.getElementById('kledningInfoModal');
+      if (modal) modal.style.display = 'none';
+    };
+
+    // ── Kledning Resultat UI ──────────────────────────────────────────────
+    function renderKledningResultatUI(res) {
+      if (res.feil) {
+        return '<div style="background:#fef0f0;border:1.5px solid #e07b7b;border-radius:12px;padding:16px;color:#c33;font-weight:700;font-size:14px">'
+          + res.feiltekst
+          + '</div>';
+      }
+
+      var a = res.anbefalt;
+      var alt = res.alternativ;
+      var h = '';
+
+      // Anbefalt card (primary)
+      h += '<div style="background:linear-gradient(135deg,#f0f4ff 0%,#e8eeff 100%);border:2px solid #d0deff;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 4px 12px rgba(79,100,233,0.1)">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">'
+        + '<span style="font-size:18px">✓</span>'
+        + '<span style="font-size:14px;font-weight:800;color:#4a5fc1;text-transform:uppercase;letter-spacing:0.3px">Anbefalt løsning</span>'
+        + '</div>'
+        + '<div style="display:grid;gap:10px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center">'
+        + '<span style="font-size:13px;font-weight:700;color:#666">Dekningsmål</span>'
+        + '<span style="font-size:18px;font-weight:800;color:#1a1a1a">' + (a.justertDekningsmaalMm / 10).toFixed(1) + ' <span style="font-size:12px;font-weight:600;color:#999">cm</span></span>'
+        + '</div>'
+        + '<div style="display:flex;justify-content:space-between;align-items:center">'
+        + '<span style="font-size:13px;font-weight:700;color:#666">Omlegg</span>'
+        + '<span style="font-size:18px;font-weight:800;color:#1a1a1a">' + (a.justertOmleggMm / 10).toFixed(1) + ' <span style="font-size:12px;font-weight:600;color:#999">cm</span></span>'
+        + '</div>'
+        + '<div style="border-top:1px solid rgba(79,100,233,0.2);padding-top:10px;margin-top:10px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+        + '<span style="font-size:13px;color:#666">Underliggere</span>'
+        + '<span style="font-size:16px;font-weight:800">' + a.antallUnderliggere + '</span>'
+        + '</div>'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+        + '<span style="font-size:13px;color:#666">Overliggere</span>'
+        + '<span style="font-size:16px;font-weight:800">' + a.antallOverliggere + '</span>'
+        + '</div>'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;font-weight:700">'
+        + '<span style="font-size:13px">Totalt bord</span>'
+        + '<span style="font-size:18px;color:#4a5fc1">' + (a.antallUnderliggere + a.antallOverliggere) + '</span>'
+        + '</div>'
+        + '</div>'
+        + '</div>'
+        + '</div>';
+
+      // Alternativ card (secondary)
+      if (alt) {
+        h += '<div style="background:#fff;border:1.5px solid #e0e8f5;border-radius:14px;padding:16px;margin-bottom:16px">'
+          + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
+          + '<span style="font-size:14px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:0.3px">Alternativ løsning</span>'
+          + '</div>'
+          + '<div style="display:grid;gap:10px">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center">'
+          + '<span style="font-size:13px;font-weight:700;color:#666">Dekningsmål</span>'
+          + '<span style="font-size:16px;font-weight:800;color:#1a1a1a">' + (alt.justertDekningsmaalMm / 10).toFixed(1) + ' <span style="font-size:12px;font-weight:600;color:#999">cm</span></span>'
+          + '</div>'
+          + '<div style="display:flex;justify-content:space-between;align-items:center">'
+          + '<span style="font-size:13px;font-weight:700;color:#666">Omlegg</span>'
+          + '<span style="font-size:16px;font-weight:800;color:#1a1a1a">' + (alt.justertOmleggMm / 10).toFixed(1) + ' <span style="font-size:12px;font-weight:600;color:#999">cm</span></span>'
+          + '</div>'
+          + '<div style="border-top:1px solid #e0e8f5;padding-top:10px;margin-top:10px">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+          + '<span style="font-size:13px;color:#666">Underliggere</span>'
+          + '<span style="font-size:16px;font-weight:800">' + alt.antallUnderliggere + '</span>'
+          + '</div>'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+          + '<span style="font-size:13px;color:#666">Overliggere</span>'
+          + '<span style="font-size:16px;font-weight:800">' + alt.antallOverliggere + '</span>'
+          + '</div>'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;font-weight:700">'
+          + '<span style="font-size:13px">Totalt bord</span>'
+          + '<span style="font-size:16px">' + (alt.antallUnderliggere + alt.antallOverliggere) + '</span>'
+          + '</div>'
+          + '</div>'
+          + '</div>'
+          + '</div>';
+      }
+
+      // Utdelingsmål section
+      h += '<div style="background:#fff;border:1.5px solid #e0e8f5;border-radius:14px;padding:16px">'
+        + '<div style="font-size:13px;font-weight:800;color:#1a1a1a;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.3px">Utdelingsmål</div>';
+
+      if (a.oppmerkingsliste && a.oppmerkingsliste.length > 0) {
+        h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">';
+        for (var i = 0; i < a.oppmerkingsliste.length; i++) {
+          var m = a.oppmerkingsliste[i];
+          h += '<div style="background:#f9fafe;border:1px solid #e8eef7;border-radius:8px;padding:10px;text-align:center">'
+            + '<div style="font-weight:800;color:#4a5fc1;font-size:14px">U' + m.nr + '</div>'
+            + '<div style="font-size:12px;color:#888;margin-top:4px">' + (m.posisjonMm / 10).toFixed(1) + ' cm</div>'
+            + '</div>';
+        }
+        h += '</div>';
+      } else {
+        h += '<div style="color:#999;font-size:13px;font-style:italic">Ingen oppmerking</div>';
+      }
+
+      h += '</div>';
+
+      return h;
+    }
 
     window.calcKledning = function() {
   if (!document.getElementById('kledFeltlengde')) return;
@@ -491,58 +650,8 @@ function renderKledningTool() {
   var el = document.getElementById('kledResultat');
   if (!el) return;
 
-  if (res.feil) {
-    el.innerHTML =
-      '<div style="background:#fee;border:1.5px solid #c33;border-radius:14px;padding:16px;color:#c33;font-weight:700">'
-      + res.feiltekst +
-      '</div>';
-    return;
-  }
-
-  var a = res.anbefalt;
-  var alt = res.alternativ;
-
-  var h = ''
-    + '<div style="background:#f5f8ff;border:1.5px solid #dce8ff;border-radius:14px;padding:16px;margin-top:16px">'
-    + '<div style="font-size:18px;font-weight:800;margin-bottom:12px">Foreslått løsning</div>'
-    + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Dekningsmål</span><span style="font-size:16px;font-weight:800">' + (a.justertDekningsmaalMm / 10).toFixed(1) + ' cm</span></div>'
-    + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Omlegg</span><span style="font-size:16px;font-weight:800">' + (a.justertOmleggMm / 10).toFixed(1) + ' cm</span></div>'
-    + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Ideelt dekningsmål</span><span style="font-size:16px;font-weight:800">' + (res.ideeltDekningsmaalMm / 10).toFixed(1) + ' cm</span></div>'
-    + '<div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #dce8ff;margin-top:10px"><span style="font-size:13px;font-weight:700;color:#888">Underliggere</span><span style="font-size:16px;font-weight:800">' + a.antallUnderliggere + '</span></div>'
-    + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Overliggere</span><span style="font-size:16px;font-weight:800">' + a.antallOverliggere + '</span></div>'
-    + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Totalt bord</span><span style="font-size:16px;font-weight:800">' + (a.antallUnderliggere + a.antallOverliggere) + '</span></div>'
-    + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Dekningsmål totalt</span><span style="font-size:16px;font-weight:800">' + a.antallDekningsmaal + '</span></div>'
-    + '</div>';
-
-  if (alt) {
-    h += ''
-      + '<div style="background:#fff;border:1.5px solid #dce8ff;border-radius:14px;padding:16px;margin-top:16px">'
-      + '<div style="font-size:16px;font-weight:800;margin-bottom:12px">Alternativ løsning</div>'
-      + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Dekningsmål</span><span style="font-size:16px;font-weight:800">' + (alt.justertDekningsmaalMm / 10).toFixed(1) + ' cm</span></div>'
-      + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Omlegg</span><span style="font-size:16px;font-weight:800">' + (alt.justertOmleggMm / 10).toFixed(1) + ' cm</span></div>'
-      + '<div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #dce8ff;margin-top:10px"><span style="font-size:13px;font-weight:700;color:#888">Underliggere</span><span style="font-size:16px;font-weight:800">' + alt.antallUnderliggere + '</span></div>'
-      + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Overliggere</span><span style="font-size:16px;font-weight:800">' + alt.antallOverliggere + '</span></div>'
-      + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Totalt bord</span><span style="font-size:16px;font-weight:800">' + (alt.antallUnderliggere + alt.antallOverliggere) + '</span></div>'
-      + '<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#888">Dekningsmål totalt</span><span style="font-size:16px;font-weight:800">' + alt.antallDekningsmaal + '</span></div>'
-      + '</div>';
-  }
-
-  h += '<div style="background:#fff;border:1.5px solid #dce8ff;border-radius:14px;padding:16px;margin-top:16px">';
-  h += '<div style="font-size:13px;font-weight:700;margin-bottom:14px">Utdelingsmål</div>';
-  h += '<div style="font-size:12px;line-height:1.8">';
-
-  if (a.oppmerkingsliste && a.oppmerkingsliste.length > 0) {
-    for (var i = 0; i < a.oppmerkingsliste.length; i++) {
-      var m = a.oppmerkingsliste[i];
-      h += 'U' + m.nr + ' @ ' + (m.posisjonMm / 10).toFixed(1) + ' cm<br>';
-    }
-  } else {
-    h += 'Ingen oppmerking';
-  }
-
-  h += '</div></div>';
-
-  el.innerHTML = h;
+  // Bruk den nye renderKledningResultatUI() for å generere resultatet
+  el.innerHTML = renderKledningResultatUI(res);
 };
 
 
