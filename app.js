@@ -851,362 +851,9 @@
     };
 
     // ---- MATERIALKALKULATOR ----
-    const difficultyFactors = {
-      enkel:    {label:'Enkel',   factor:0.85, desc:'God tilkomst, rett flate'},
-      normal:   {label:'Normal',  factor:1.0,  desc:'Standard forhold'},
-      vanskelig:{label:'Vanskelig',factor:1.25, desc:'Høyde, skråtak, trangt'},
-      ekstremt: {label:'Ekstremt',factor:1.5,  desc:'Særlig krevende forhold'},
-    };
+    // difficultyFactors, calcDefaults, getCalcRate → moved to productionData.js / calcEngine.js
 
-    const calcDefaults = {
-      terrasse:      {tPerM2:2.5,  label:'t/m²'},
-      kledning:      {tPerM2:1.3,  label:'t/m²'},
-      tak:           {tPerM2:1.8,  label:'t/m²'},
-      lettvegg:      {tPerM2:1.0,  label:'t/m²'},
-      etterisolering:{tPerM2:0.9,  label:'t/m²'},
-      vindu:         {tPerM2:4.0,  label:'t/stk'},
-      gulv:          {tPerM2:0.8,  label:'t/m²'},
-      panel:         {tPerM2:1.1,  label:'t/m²'},
-      dor:           {tPerM2:3.0,  label:'t/stk'},
-      trapp:         {tPerM2:16.0, label:'t/stk'},
-      bad:           {tPerM2:2.5,  label:'t/m²'},
-    };
-    function getCalcRate(type){
-      const user=(state.calcRates||{})[type];
-      return user!=null ? user : calcDefaults[type]?.tPerM2 ?? 1;
-    }
-
-    const calcDefs = {
-      terrasse: {
-        label:'Terrasse',
-        materialOptions:[
-          {id:'bord',label:'Terrassebord',options:['28×120 impregnert','28×120 trykkimpregnert','28×145 impregnert','45×120 kebony','Kompositt 25×140']},
-          {id:'fundament',label:'Fundamenttype',options:['Punktfundament betong','Skruefundament','Bjelkesko på plate']},
-        ],
-        inputs:[
-          {id:'lengde',label:'Lengde (m)',default:4},
-          {id:'bredde',label:'Bredde (m)',default:3},
-        ],
-        calc(v,mats){
-          const areal=v.lengde*v.bredde;
-          const bordValg=mats.bord||'28×120 impregnert';
-          const breddemm=bordValg.includes('145')?145:bordValg.includes('140')?140:120;
-          const lmPerM2=1000/breddemm*1.05;
-          const bordLm=Math.ceil(areal*lmPerM2*1.1);
-          const bjelkeLm=Math.ceil((v.bredde/0.6)*v.lengde*1.1);
-          const antFund=Math.ceil(areal/2.5);
-          return {
-            areal:areal.toFixed(1)+' m²',
-            info:`Bord: ${bordValg}`,
-            materialer:[
-              {name:`Terrassebord ${bordValg}`,qty:bordLm,unit:'lm',waste:10},
-              {name:'Bjelkelag 48×198 C24',qty:bjelkeLm,unit:'lm',waste:8},
-              {name:'Fundament / stolpesko',qty:antFund,unit:'stk',waste:0},
-              {name:'Terrasseskruer A2',qty:Math.ceil(areal/4),unit:'pk',waste:0},
-            ],
-            timer:Math.round(areal*getCalcRate('terrasse')),
-          };
-        }
-      },
-      kledning: {
-        label:'Kledning',
-        materialOptions:[
-          {id:'type',label:'Kledningstype',options:['D-fals 19×148','D-fals 19×120','Stående kledning 19×148','Liggende kledning 19×98','Villmarkspanel 19×148']},
-          {id:'isolasjon',label:'Etterisolering',options:['Ingen','50 mm','100 mm']},
-        ],
-        inputs:[
-          {id:'bredde',label:'Veggbredde (m)',default:6},
-          {id:'hoyde',label:'Vegghøyde (m)',default:2.5},
-          {id:'vinduer',label:'Antall åpninger',default:1},
-        ],
-        calc(v,mats){
-          const brutto=v.bredde*v.hoyde;
-          const netto=Math.max(brutto-v.vinduer*1.8,1);
-          const kledType=mats.type||'D-fals 19×148';
-          const breddemm=kledType.includes('98')?98:kledType.includes('120')?120:148;
-          const lmPerM2=1000/breddemm*1.12;
-          const kledningLm=Math.ceil(netto*lmPerM2);
-          const lekterLm=Math.ceil(netto/0.6*1.1);
-          const isolasjon=mats.isolasjon||'Ingen';
-          const ekstraMat=isolasjon!=='Ingen'?[
-            {name:`Isolasjon ${isolasjon}`,qty:Math.ceil(netto/5.76),unit:'pk',waste:5},
-          ]:[];
-          return {
-            areal:netto.toFixed(1)+' m² netto',
-            info:`${kledType}${isolasjon!=='Ingen'?' + '+isolasjon:''}`,
-            materialer:[
-              {name:kledType,qty:kledningLm,unit:'lm',waste:12},
-              {name:'Lekter 23×48',qty:lekterLm,unit:'lm',waste:10},
-              {name:'Vindsperre',qty:Math.ceil(netto/50),unit:'rull',waste:5},
-              {name:'Spiker / skruer utvendig',qty:Math.ceil(netto/10),unit:'pk',waste:0},
-              ...ekstraMat,
-            ],
-            timer:Math.round(netto*getCalcRate('kledning')),
-          };
-        }
-      },
-      tak: {
-        label:'Tak',
-        materialOptions:[
-          {id:'type',label:'Taktype',options:['Takstein betong','Takstein leire','Ståltak / platetak','Shingel','Papp/folie flatt tak']},
-        ],
-        inputs:[
-          {id:'lengde',label:'Takkjelens lengde (m)',default:8},
-          {id:'bredde',label:'Takflatens bredde (m)',default:5},
-          {id:'helning',label:'Takvinkel (grader)',default:22},
-        ],
-        calc(v,mats){
-          const faktor=1/Math.cos(v.helning*Math.PI/180);
-          const areal=v.lengde*v.bredde*faktor;
-          const takType=mats.type||'Takstein betong';
-          return {
-            areal:areal.toFixed(1)+' m²',
-            info:takType,
-            materialer:[
-              {name:takType,qty:Math.ceil(areal*1.1),unit:'m²',waste:10},
-              {name:'Sløyfer og lekter',qty:Math.ceil(areal*1.6),unit:'lm',waste:8},
-              {name:'Undertaksduk',qty:Math.ceil(areal/50),unit:'rull',waste:5},
-              {name:'Beslag / renner',qty:Math.ceil(v.lengde*2/10),unit:'pakke',waste:0},
-            ],
-            timer:Math.round(areal*getCalcRate('tak')),
-          };
-        }
-      },
-      lettvegg: {
-        label:'Lettvegg',
-        materialOptions:[
-          {id:'gips',label:'Gipstype',options:['Standard 13 mm','Brannhemmende 15 mm','Fuktbestandig 13 mm']},
-          {id:'isolasjon',label:'Isolasjon',options:['100 mm mineralull','150 mm mineralull','Ingen']},
-        ],
-        inputs:[
-          {id:'lengde',label:'Vegglengde (m)',default:4},
-          {id:'hoyde',label:'Vegghøyde (m)',default:2.4},
-        ],
-        calc(v,mats){
-          const areal=v.lengde*v.hoyde;
-          const stendere=Math.ceil(v.lengde/0.6)+2;
-          const gipsType=mats.gips||'Standard 13 mm';
-          const gipsPlater=Math.ceil(areal/2.88*2*1.1);
-          const isolType=mats.isolasjon||'100 mm mineralull';
-          const isolMat=isolType!=='Ingen'?[{name:`Mineralull ${isolType.replace(' mineralull','')}`,qty:Math.ceil(areal/5.76),unit:'pk',waste:5}]:[];
-          return {
-            areal:areal.toFixed(1)+' m²',
-            info:`${gipsType} • ${isolType}`,
-            materialer:[
-              {name:'Stender 48×98 C24',qty:stendere,unit:'stk',waste:8},
-              {name:`Gips ${gipsType}`,qty:gipsPlater,unit:'pl',waste:10},
-              ...isolMat,
-              {name:'Gipsskruer båndet',qty:Math.ceil(areal/20),unit:'pk',waste:0},
-            ],
-            timer:Math.round(areal*getCalcRate('lettvegg')),
-          };
-        }
-      },
-      etterisolering: {
-        label:'Etterisolering',
-        materialOptions:[
-          {id:'type',label:'Isolasjonstype',options:['Mineralull','Steinull','Isopor EPS','Trefiberisolasjon']},
-        ],
-        inputs:[
-          {id:'areal',label:'Areal (m²)',default:20},
-          {id:'tykkelse',label:'Tykkelse (mm)',default:50},
-        ],
-        calc(v,mats){
-          const isolType=mats.type||'Mineralull';
-          return {
-            areal:v.areal+' m²',
-            info:`${isolType} ${v.tykkelse} mm`,
-            materialer:[
-              {name:`${isolType} ${v.tykkelse} mm`,qty:Math.ceil(v.areal/5.76),unit:'pk',waste:8},
-              {name:'Lekt 48×48',qty:Math.ceil(v.areal/0.6*1.1),unit:'lm',waste:10},
-              {name:'Dampsperre',qty:Math.ceil(v.areal/50),unit:'rull',waste:5},
-              {name:'Tape / mansjetter',qty:1,unit:'pakke',waste:0},
-            ],
-            timer:Math.round(v.areal*getCalcRate('etterisolering')),
-          };
-        }
-      },
-      vindu: {
-        label:'Vindu',
-        materialOptions:[
-          {id:'type',label:'Vindustype',options:['Standard 2-lags','Energi 3-lags','Fastkarm','Kippvindu']},
-          {id:'foring',label:'Foring',options:['Inkludert foring og lister','Kun montering']},
-        ],
-        inputs:[
-          {id:'antall',label:'Antall vinduer',default:1},
-          {id:'bredde',label:'Bredde (cm)',default:100},
-          {id:'hoyde',label:'Høyde (cm)',default:120},
-        ],
-        calc(v,mats){
-          const omfar=Math.ceil((v.bredde*2+v.hoyde*2)/100*1.2);
-          const foringType=mats.foring||'Inkludert foring og lister';
-          const ekstraMat=foringType.includes('foring')?[
-            {name:'Listverk / foring',qty:omfar*v.antall,unit:'lm',waste:10},
-          ]:[];
-          return {
-            areal:v.antall+' vindu(er)',
-            info:`${mats.type||'Standard 2-lags'} • ${foringType}`,
-            materialer:[
-              {name:'Karmskruer 90 mm',qty:v.antall,unit:'pk',waste:0},
-              {name:'Fugeskum proff',qty:v.antall*2,unit:'stk',waste:0},
-              {name:'Beslag / tetting',qty:v.antall,unit:'pakke',waste:0},
-              ...ekstraMat,
-            ],
-            timer:Math.round(v.antall*getCalcRate('vindu')),
-          };
-        }
-      },
-      gulv: {
-        label:'Gulvlegging',
-        materialOptions:[
-          {id:'type',label:'Gulvtype',options:['Laminat 8 mm','Laminat 12 mm','Parkett 14 mm','Vinyl/LVT','Fliser keramikk','Fliser naturstein']},
-          {id:'underlag',label:'Underlag',options:['Trinnlyd + PE-folie','Selvutjevnende masse','Eksisterende ok']},
-        ],
-        inputs:[
-          {id:'areal',label:'Areal (m²)',default:20},
-        ],
-        calc(v,mats){
-          const gulvType=mats.type||'Laminat 8 mm';
-          const erFlis=gulvType.includes('Flis');
-          const underlagType=mats.underlag||'Trinnlyd + PE-folie';
-          const underlagMat=underlagType.includes('Trinnlyd')?[
-            {name:'Trinnlydmatte',qty:Math.ceil(v.areal*1.1),unit:'m²',waste:5},
-          ]:underlagType.includes('Selvutjevnende')?[
-            {name:'Selvutjevnende masse',qty:Math.ceil(v.areal/20),unit:'sekk',waste:5},
-          ]:[];
-          return {
-            areal:v.areal+' m²',
-            info:gulvType,
-            materialer:[
-              {name:gulvType,qty:Math.ceil(v.areal*1.1),unit:'m²',waste:8},
-              ...underlagMat,
-              {name:erFlis?'Flisklister / fugemasse':'Gulvlister',qty:Math.ceil(Math.sqrt(v.areal)*4),unit:'lm',waste:10},
-            ],
-            timer:Math.round(v.areal*getCalcRate('gulv')),
-          };
-        }
-      },
-      panel: {
-        label:'Innvendig panel',
-        materialOptions:[
-          {id:'type',label:'Paneltype',options:['Kledningspanel 14×121','Furupanel 14×95','Sponplate','Gipsplate 13 mm']},
-          {id:'område',label:'Område',options:['Vegg','Tak','Vegg og tak']},
-        ],
-        inputs:[
-          {id:'areal',label:'Areal (m²)',default:15},
-        ],
-        calc(v,mats){
-          const panelType=mats.type||'Kledningspanel 14×121';
-          const breddemm=panelType.includes('95')?95:panelType.includes('121')?121:120;
-          const lmPerM2=1000/breddemm*1.08;
-          return {
-            areal:v.areal+' m²',
-            info:panelType,
-            materialer:[
-              {name:panelType,qty:Math.ceil(v.areal*lmPerM2),unit:'lm',waste:10},
-              {name:'Lekter 23×48',qty:Math.ceil(v.areal/0.6),unit:'lm',waste:8},
-              {name:'Listverk fotlist',qty:Math.ceil(Math.sqrt(v.areal)*4),unit:'lm',waste:10},
-              {name:'Spiker / dykkert',qty:Math.ceil(v.areal/15),unit:'pk',waste:0},
-            ],
-            timer:Math.round(v.areal*getCalcRate('panel')),
-          };
-        }
-      },
-      dor: {
-        label:'Dørmontering',
-        materialOptions:[
-          {id:'type',label:'Dørtype',options:['Innvendig fyllingsdør','Innvendig glatt dør','Ytterdør','Skyvedør','Dobbeldør']},
-          {id:'arbeid',label:'Arbeidsomfang',options:['Kun montering i åpning','Montering + karmsetting','Komplett inkl. listverk']},
-        ],
-        inputs:[
-          {id:'antall',label:'Antall dører',default:1},
-        ],
-        calc(v,mats){
-          const arbeid=mats.arbeid||'Komplett inkl. listverk';
-          const ekstraMat=arbeid.includes('listverk')?[
-            {name:'Dørlistverk',qty:v.antall*5,unit:'lm',waste:10},
-          ]:[];
-          return {
-            areal:v.antall+' dør(er)',
-            info:`${mats.type||'Innvendig fyllingsdør'} • ${arbeid}`,
-            materialer:[
-              {name:'Karmskruer',qty:v.antall,unit:'pk',waste:0},
-              {name:'Skum / tetting',qty:v.antall,unit:'stk',waste:0},
-              ...ekstraMat,
-            ],
-            timer:Math.round(v.antall*getCalcRate('dor')),
-          };
-        }
-      },
-      trapp: {
-        label:'Trapp',
-        materialOptions:[
-          {id:'type',label:'Trappetype',options:['Enkel rettløpstrapp','L-trapp','Svingt trapp','Spiraltrapp']},
-          {id:'materiale',label:'Materiale',options:['Furu ubehandlet','Eik','Hvitmalt MDF','Stål med tretrinn']},
-        ],
-        inputs:[
-          {id:'antall',label:'Antall etg. steg',default:14},
-          {id:'bredde',label:'Trappens bredde (cm)',default:90},
-        ],
-        calc(v,mats){
-          const trappType=mats.type||'Enkel rettløpstrapp';
-          const mat=mats.materiale||'Furu ubehandlet';
-          return {
-            areal:v.antall+' trinn',
-            info:`${trappType} • ${mat}`,
-            materialer:[
-              {name:`Trinn ${mat}`,qty:v.antall,unit:'stk',waste:2},
-              {name:'Bærebjelke / vange',qty:2,unit:'stk',waste:0},
-              {name:'Rekkverk',qty:Math.ceil(v.antall*0.18),unit:'lm',waste:5},
-              {name:'Håndlist',qty:Math.ceil(v.antall*0.18)+1,unit:'lm',waste:5},
-              {name:'Skruer og festemateriell',qty:1,unit:'pakke',waste:0},
-            ],
-            timer:Math.round(getCalcRate('trapp')),
-          };
-        }
-      },
-      bad: {
-        label:'Bad / våtrom',
-        materialOptions:[
-          {id:'flis',label:'Flisvalg',options:['Standard keramikk','Naturstein','Storformat 60×60','Mosaikk']},
-          {id:'arbeid',label:'Arbeidsomfang',options:['Kun flislegging','Membran + flislegging','Full rehabilitering']},
-        ],
-        inputs:[
-          {id:'areal',label:'Gulvareal (m²)',default:5},
-          {id:'vegghøyde',label:'Vegghøyde (m)',default:2.4},
-          {id:'vegger',label:'Antall vegger å flise',default:4},
-        ],
-        calc(v,mats){
-          const veggAreal=Math.ceil(v.vegghøyde*Math.sqrt(v.areal)*v.vegger);
-          const totAreal=v.areal+veggAreal;
-          const flisType=mats.flis||'Standard keramikk';
-          const arbeid=mats.arbeid||'Membran + flislegging';
-          const ekstraMat=arbeid.includes('Membran')||arbeid.includes('Full')?[
-            {name:'Membran / slukmansjett',qty:1,unit:'pakke',waste:0},
-            {name:'Membranmasse',qty:Math.ceil(totAreal/10),unit:'spann',waste:5},
-          ]:[];
-          return {
-            areal:`${v.areal} m² gulv + ${veggAreal} m² vegg`,
-            info:`${flisType} • ${arbeid}`,
-            materialer:[
-              {name:`Flis ${flisType}`,qty:Math.ceil(totAreal*1.1),unit:'m²',waste:10},
-              {name:'Flislim',qty:Math.ceil(totAreal/5),unit:'sekk',waste:5},
-              {name:'Fugmasse',qty:Math.ceil(totAreal/10),unit:'pk',waste:5},
-              {name:'Plater / underlag',qty:Math.ceil(totAreal*1.05),unit:'m²',waste:8},
-              ...ekstraMat,
-            ],
-            timer:Math.round(v.areal*getCalcRate('bad')),
-          };
-        }
-      },
-    };
-
-    window.saveCalcRate=function(type, val){
-      state.calcRates=state.calcRates||{};
-      state.calcRates[type]=parseFloat(val)||calcDefaults[type]?.tPerM2||1;
-      saveState();
-      runCalcWidget();
-    };
+    // calcDefs, saveCalcRate → moved to productionData.js / calcEngine.js
 
         window.toggleCalcWidget=function(){
       const el=document.getElementById('calcWidget');
@@ -1250,6 +897,65 @@
               <label>${inp.label}</label>
               <input type="number" id="calcInput_${inp.id}" value="${inp.default}" oninput="runCalcWidget()" />
             </div>`).join('')}
+        </div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+          <div style="font-weight:800;font-size:12px;color:var(--muted);margin-bottom:10px">⚙️ Prosjektfaktorer</div>
+          <div class="row-3" style="margin-bottom:10px">
+            <div>
+              <label>Tilkomst</label>
+              <select id="calcAccess" onchange="runCalcWidget()" style="padding:10px 12px">
+                <option value="easy">Lett (×1.0)</option>
+                <option value="normal" selected>Normal (×1.1)</option>
+                <option value="difficult">Vanskelig (×1.3)</option>
+              </select>
+            </div>
+            <div>
+              <label>Høyde</label>
+              <select id="calcHeight" onchange="runCalcWidget()" style="padding:10px 12px">
+                <option value="ground" selected>Bakke (×1.0)</option>
+                <option value="elevated">Opphøyd (×1.2)</option>
+                <option value="high">Høyt (×1.5)</option>
+              </select>
+            </div>
+            <div>
+              <label>Kompleksitet</label>
+              <select id="calcComplexity" onchange="runCalcWidget()" style="padding:10px 12px">
+                <option value="simple">Enkel (×1.0)</option>
+                <option value="normal" selected>Normal (×1.1)</option>
+                <option value="complex">Kompleks (×1.3)</option>
+              </select>
+            </div>
+          </div>
+          <div class="row-3">
+            <div>
+              <label>Avstand (km)</label>
+              <input type="number" id="calcDistance" value="0" placeholder="0" oninput="runCalcWidget()" />
+            </div>
+            <div>
+              <label style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                <input type="checkbox" id="calcOccupied" style="width:auto" onchange="runCalcWidget()" />
+                Bebodd bolig
+              </label>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+          <div style="font-weight:800;font-size:12px;color:var(--muted);margin-bottom:10px">📅 Indirekte tid (timer)</div>
+          <div class="row-3">
+            <div>
+              <label>Rigg</label>
+              <input type="number" id="calcRigging" value="0" placeholder="Auto" oninput="runCalcWidget()" />
+            </div>
+            <div>
+              <label>Planlegging</label>
+              <input type="number" id="calcPlanning" value="0" placeholder="Auto" oninput="runCalcWidget()" />
+            </div>
+            <div>
+              <label>Opprydding %</label>
+              <input type="number" id="calcCleanup" value="3" placeholder="3" oninput="runCalcWidget()" />
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px">Blank = automatisk beregning</div>
         </div>`;
       window._calcDifficulty='normal';
       runCalcWidget();
@@ -1272,6 +978,8 @@
       const def=calcDefs[type];
       const resultsEl=document.getElementById('calcResults');
       if(!def||!resultsEl) return;
+
+      // Get input values
       const vals={};
       def.inputs.forEach(inp=>{
         vals[inp.id]=parseFloat(document.getElementById('calcInput_'+inp.id)?.value)||inp.default;
@@ -1281,38 +989,358 @@
         const el=document.getElementById('calcMat_'+opt.id);
         if(el) mats[opt.id]=el.value;
       });
-      const diff=window._calcDifficulty||'normal';
-      const diffFactor=difficultyFactors[diff]?.factor||1;
+
+      // Get project factors
+      const difficulty=window._calcDifficulty||'normal';
+      const diffFactor=difficultyFactors[difficulty]?.factor||1;
+      const access=document.getElementById('calcAccess')?.value||'normal';
+      const accessFactor=accessFactors[access]?.factor||1;
+      const height=document.getElementById('calcHeight')?.value||'ground';
+      const heightFactor=heightFactors[height]?.factor||1;
+      const complexity=document.getElementById('calcComplexity')?.value||'normal';
+      const complexityFactor=complexityFactors[complexity]?.factor||1;
+      const distance=parseFloat(document.getElementById('calcDistance')?.value)||0;
+      const occupied=document.getElementById('calcOccupied')?.checked||false;
+      const occupiedFactor=occupied?1.25:1;
+
+      // Calculate base result
       let result;
       try{ result=def.calc(vals,mats); } catch(e){ console.error(e); return; }
-      const adjustedTimer=Math.round(result.timer*diffFactor);
-      const diffLabel=difficultyFactors[diff]?.label||'Normal';
-      window._lastCalcResult={...result, timer:adjustedTimer};
+
+      // Calculate direct time with all factors
+      const baseTimer=result.timer;
+      const directTimer=Math.round(baseTimer*diffFactor*accessFactor*heightFactor*complexityFactor);
+
+      // Calculate indirect time
+      let rigTimer=parseFloat(document.getElementById('calcRigging')?.value)||0;
+      let planTimer=parseFloat(document.getElementById('calcPlanning')?.value)||0;
+      const cleanupPct=parseFloat(document.getElementById('calcCleanup')?.value)||3;
+
+      const drivingTimer=Math.round(distance*2*0.5); // 30 min per 10km round trip
+      const cleanupTimer=Math.round(directTimer*cleanupPct/100);
+      const indirectTimer=rigTimer+planTimer+drivingTimer+cleanupTimer;
+      const totalTimer=directTimer+indirectTimer;
+
+      // Get materials with prices
+      const priceCatalogMap=window.buildPriceCatalogMap?window.buildPriceCatalogMap():{};
+      const materialsWithPrices=result.materialer.map(m=>{
+        const cost=priceCatalogMap[m.name]?.cost||lookupPriceForMaterial(m.name)||0;
+        return {...m, cost, totalCost:Math.round(m.qty*cost), matId:uid()};
+      });
+      const totalMatCost=materialsWithPrices.reduce((s,m)=>s+m.totalCost,0);
+
+      // Calculate prices
+      const p=getProject(currentProjectId);
+      const timeRate=(p?.work.timeRate)||850;
+      const laborSaleEx=Math.round(directTimer*timeRate*occupiedFactor);
+      const totalSaleEx=laborSaleEx+totalMatCost;
+      const laborCost=Math.round(directTimer*(p?.work.internalCost||450));
+      const totalCost=laborCost+totalMatCost;
+      const profit=totalSaleEx-totalCost;
+      const margin=totalSaleEx>0?Math.round(profit/totalSaleEx*100):0;
+
+      // Save result
+      window._lastCalcResult={
+        ...result,
+        directTimer, indirectTimer, totalTimer,
+        materialsWithPrices, totalMatCost,
+        laborSaleEx, totalSaleEx, profit, margin,
+        type, sentToOffer:false,
+        factors:{difficulty,access,height,complexity,distance,occupied}
+      };
+
+      // Build results HTML
       resultsEl.innerHTML=`
         <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:4px">
           <div style="font-weight:800;font-size:14px;margin-bottom:4px">📊 Estimat — ${def.label} — ${result.areal}</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">${result.info||''} • Vanskelighetsgrad: ${diffLabel} (×${diffFactor})</div>
-          <table style="margin-bottom:12px">
-            <thead><tr><th>Materiale</th><th>Mengde</th><th>Enhet</th><th>Svinn</th></tr></thead>
-            <tbody>
-              ${result.materialer.map(m=>`
-                <tr>
-                  <td>${escapeHtml(m.name)}</td>
-                  <td style="font-weight:700">${m.qty}</td>
-                  <td>${m.unit}</td>
-                  <td>${m.waste}%</td>
-                </tr>`).join('')}
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">${result.info||''}</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div style="padding:10px;background:#f0f7ff;border-radius:10px">
+              <div style="font-size:11px;color:var(--muted);font-weight:700">⏱️ Direkte timer</div>
+              <div style="font-size:18px;font-weight:800;color:var(--blue);margin-top:4px">${directTimer}t</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:4px">${baseTimer}t × ${diffFactor} × ${accessFactor} × ${heightFactor} × ${complexityFactor}</div>
+            </div>
+            <div style="padding:10px;background:#fff8f0;border-radius:10px">
+              <div style="font-size:11px;color:var(--muted);font-weight:700">📅 Indirekte timer</div>
+              <div style="font-size:18px;font-weight:800;color:#ea8c55;margin-top:4px">${indirectTimer}t</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:4px">Rigg: ${rigTimer}t + Plan: ${planTimer}t + Kjøring: ${drivingTimer}t + Opprydding: ${cleanupTimer}t</div>
+            </div>
+          </div>
+
+          <table style="margin-bottom:12px;width:100%;border-collapse:collapse;font-size:11px">
+            <thead><tr style="border-bottom:1px solid var(--line)"><th style="text-align:left;padding:6px">Materiale</th><th style="text-align:right;padding:6px">Mnd</th><th style="text-align:right;padding:6px">Pris</th><th style="text-align:right;padding:6px">Svinn%</th><th style="text-align:right;padding:6px">Total</th><th style="text-align:center;padding:6px">Handling</th></tr></thead>
+            <tbody id="calcMaterialsTableBody">
+              ${materialsWithPrices.map(m=>`<tr style="border-bottom:1px solid #eef2ff" data-mat-id="${m.matId}">
+                <td style="padding:6px">
+                  <div style="display:flex;gap:4px;align-items:center">
+                    <input type="text" class="calcMatName" data-mat-id="${m.matId}" value="${escapeHtml(m.name||'')}"
+                           style="flex:1;padding:4px;border:1px solid #ddd;border-radius:4px;font-size:11px"
+                           onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
+                    <select class="calcMatCatalog" data-mat-id="${m.matId}" style="padding:4px;font-size:11px;border:1px solid #0a84ff;border-radius:4px;background:#fff;width:70px"
+                            onchange="const v=this.value; if(v) applyCatalogMatch('${m.matId}',v); this.value=''" title="Velg fra katalog">
+                      <option value="">🔍 Kat</option>
+                      ${Object.entries(window.buildPriceCatalogMap?.()??{})
+                        .filter(([name])=>name.toLowerCase().includes((m.name||'').toLowerCase()))
+                        .slice(0,4)
+                        .map(([name,item])=>'<option value="'+escapeHtml(name)+'">'+escapeHtml(name)+'</option>')
+                        .join('')}
+                    </select>
+                  </div>
+                </td>
+                <td style="text-align:right;padding:6px">
+                  <input type="number" class="calcMatQty" data-mat-id="${m.matId}" value="${(m.qty||0).toFixed(1)}" step="0.1" min="0"
+                         style="width:55px;padding:4px;border:1px solid #ddd;border-radius:4px;font-size:11px;text-align:right"
+                         onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
+                </td>
+                <td style="text-align:right;padding:6px">
+                  <input type="number" class="calcMatCost" data-mat-id="${m.matId}" value="${(m.cost||0).toFixed(2)}" step="0.01" min="0"
+                         style="width:60px;padding:4px;border:1px solid #ddd;border-radius:4px;font-size:11px;text-align:right"
+                         onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
+                </td>
+                <td style="text-align:right;padding:6px">
+                  <input type="number" class="calcMatWaste" data-mat-id="${m.matId}" value="${m.waste||0}" step="1" min="0" max="100"
+                         style="width:50px;padding:4px;border:1px solid #ddd;border-radius:4px;font-size:11px;text-align:right"
+                         onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
+                </td>
+                <td style="text-align:right;padding:6px;font-weight:700">
+                  <span class="calcMatRowTotal" data-mat-id="${m.matId}" style="color:#0a84ff">${currency((m.qty||0)*(m.cost||0))}</span>
+                </td>
+                <td style="text-align:center;padding:6px">
+                  <button class="btn" style="padding:2px 6px;font-size:10px;background:#fff3cd;border:1px solid #ffc107;cursor:pointer" onclick="deleteCalcMaterial('${m.matId}')">🗑️</button>
+                </td>
+              </tr>`).join('')}
             </tbody>
           </table>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f0f7ff;border-radius:12px;margin-bottom:12px">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--muted)">⏱️ Estimert timebruk</div>
-              ${diffFactor!==1?`<div style="font-size:11px;color:var(--muted)">Basis: ${result.timer}t × ${diffFactor} = ${adjustedTimer}t</div>`:''}
-            </div>
-            <div style="font-size:24px;font-weight:800;color:var(--blue)">${adjustedTimer} timer</div>
+          <div style="margin-bottom:12px">
+            <button class="btn secondary" style="width:100%;padding:8px;font-size:11px;background:#f0f7ff;border:1px dashed #0a84ff;cursor:pointer" onclick="addCalcMaterial()">➕ Legg til materiale</button>
           </div>
-          <button class="btn primary" onclick="doAddCalcResult()">+ Legg til i prosjekt</button>
+
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;padding:12px;background:#f5f8ff;border-radius:10px">
+            <div>
+              <div style="font-size:11px;color:var(--muted);font-weight:700">🔨 Arbeid (eks. mva)</div>
+              <div style="font-size:16px;font-weight:800;color:#0a84ff;margin-top:2px">${currency(laborSaleEx)}</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);font-weight:700">🪵 Materialer</div>
+              <div style="font-size:16px;font-weight:800;color:#167a42;margin-top:2px">${currency(totalMatCost)}</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);font-weight:700">💰 Totalt (eks. mva)</div>
+              <div style="font-size:16px;font-weight:800;color:#2e7d32;margin-top:2px">${currency(totalSaleEx)}</div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div style="padding:10px;background:#f0fdf4;border:1px solid #b7e7bb;border-radius:10px">
+              <div style="font-size:11px;color:var(--muted);font-weight:700">⏱️ Totalt timer</div>
+              <div style="font-size:22px;font-weight:800;color:#2e7d32">${totalTimer}t</div>
+            </div>
+            <div style="padding:10px;background:#f0f7ff;border:1px solid #b7d7f0;border-radius:10px">
+              <div style="font-size:11px;color:var(--muted);font-weight:700">📊 Margin</div>
+              <div style="font-size:22px;font-weight:800;color:#0a84ff">${margin}%</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">Fortjeneste: ${currency(profit)}</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px">
+            ${window._lastCalcResult?.sentToOffer
+              ?`<button class="btn" style="flex:1;background:#e8f5e9;color:#2e7d32;border:1px solid #b7e7bb;cursor:not-allowed" disabled>✅ Sendt til tilbud</button>
+                <button class="btn secondary" style="flex:1" onclick="doAddCalcToMaterials()">➕ Legg i materialliste</button>`
+              :`<button class="btn primary" style="flex:1;background:#0a84ff" onclick="doSendCalcToOffer()">📤 Send til tilbud</button>
+                <button class="btn secondary" style="flex:1" onclick="doAddCalcToMaterials()">➕ Legg i materialliste</button>`
+            }
+          </div>
+          ${window._lastCalcResult?.sentToOffer
+            ?`<div style="margin-top:8px;padding:10px;background:#e8f5e9;border:1px solid #b7e7bb;border-radius:8px;font-size:11px;color:#2e7d32;font-weight:700">
+               ✓ Denne kalkylen er sendt til tilbud. Endre inputfelt for å kunne sende en ny kalkyle.
+              </div>`
+            :''
+          }
         </div>`;
+    };
+
+    // Recalculate material totals and update pricing
+    window.recalcCalcMaterials=function(){
+      const result=window._lastCalcResult;
+      if(!result||!result.materialsWithPrices) return;
+      const rows=Array.from(document.querySelectorAll('tr[data-mat-id]'));
+      const newMaterials=[];
+      rows.forEach(row=>{
+        const matId=row.dataset.matId;
+        const name=row.querySelector('.calcMatName')?.value||'';
+        const qty=parseFloat(row.querySelector('.calcMatQty')?.value)||0;
+        const cost=parseFloat(row.querySelector('.calcMatCost')?.value)||0;
+        const waste=parseFloat(row.querySelector('.calcMatWaste')?.value)||0;
+        const unit=(result.materialsWithPrices.find(m=>m.matId===matId)?.unit)||'stk';
+        const totalCost=Math.round(qty*cost);
+        newMaterials.push({matId,name,qty,cost,waste,unit,totalCost});
+        const totalSpan=row.querySelector('.calcMatRowTotal');
+        if(totalSpan) totalSpan.textContent=currency(totalCost);
+      });
+      result.materialsWithPrices=newMaterials;
+      result.totalMatCost=newMaterials.reduce((s,m)=>s+(m.totalCost||0),0);
+      const p=getProject(currentProjectId);
+      const laborSaleEx=result.laborSaleEx;
+      const totalSaleEx=laborSaleEx+result.totalMatCost;
+      const laborCost=Math.round(result.directTimer*(p?.work.internalCost||450));
+      const totalCost=laborCost+result.totalMatCost;
+      const profit=totalSaleEx-totalCost;
+      const margin=totalSaleEx>0?Math.round(profit/totalSaleEx*100):0;
+      result.profit=profit; result.margin=margin; result.totalSaleEx=totalSaleEx; result.totalCost=totalCost;
+      const matGridDiv=document.querySelector('div[style*="grid-template-columns:repeat(3"]');
+      if(matGridDiv){
+        matGridDiv.innerHTML=`<div><div style="font-size:11px;color:var(--muted);font-weight:700">🔨 Arbeid (eks. mva)</div><div style="font-size:16px;font-weight:800;color:#0a84ff;margin-top:2px">${currency(laborSaleEx)}</div></div>
+          <div><div style="font-size:11px;color:var(--muted);font-weight:700">🪵 Materialer</div><div style="font-size:16px;font-weight:800;color:#167a42;margin-top:2px">${currency(result.totalMatCost)}</div></div>
+          <div><div style="font-size:11px;color:var(--muted);font-weight:700">💰 Totalt (eks. mva)</div><div style="font-size:16px;font-weight:800;color:#2e7d32;margin-top:2px">${currency(totalSaleEx)}</div></div>`;
+      }
+      const marginDiv=document.querySelector('div[style*="background:#f0f7ff"][style*="margin"]');
+      if(marginDiv){
+        const marginValueEl=marginDiv.querySelector('div[style*="font-size:22px"]');
+        const profitEl=marginDiv.querySelector('div[style*="font-size:10px"]');
+        if(marginValueEl) marginValueEl.textContent=margin+'%';
+        if(profitEl) profitEl.textContent='Fortjeneste: '+currency(profit);
+      }
+      result.sentToOffer=false;
+      updateCalcSendButtonUI();
+    };
+
+    // Apply catalog selection to material
+    window.applyCatalogMatch=function(matId,productName){
+      const priceCatalogMap=window.buildPriceCatalogMap?window.buildPriceCatalogMap():{};
+      const item=priceCatalogMap[productName];
+      if(!item) return;
+      const row=document.querySelector('tr[data-mat-id="'+matId+'"]');
+      if(row){
+        row.querySelector('.calcMatName').value=item.name||'';
+        row.querySelector('.calcMatCost').value=(item.cost||0).toFixed(2);
+        recalcCalcMaterials();
+      }
+    };
+
+    // Delete material row
+    window.deleteCalcMaterial=function(matId){
+      const row=document.querySelector('tr[data-mat-id="'+matId+'"]');
+      if(row) row.remove();
+      recalcCalcMaterials();
+    };
+
+    // Add new material row
+    window.addCalcMaterial=function(){
+      const result=window._lastCalcResult;
+      if(!result) return;
+      const newMat={matId:uid(),name:'',qty:1,cost:0,waste:0,unit:'stk',totalCost:0};
+      result.materialsWithPrices.push(newMat);
+      const tbody=document.getElementById('calcMaterialsTableBody');
+      if(tbody){
+        const newRow=document.createElement('tr');
+        newRow.style.borderBottom='1px solid #eef2ff';
+        newRow.dataset.matId=newMat.matId;
+        newRow.innerHTML=`<td style="padding:6px">
+          <div style="display:flex;gap:4px;align-items:center">
+            <input type="text" class="calcMatName" data-mat-id="${newMat.matId}" value="" style="flex:1;padding:4px;border:1px solid #ddd;border-radius:4px;font-size:11px" onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
+            <select class="calcMatCatalog" data-mat-id="${newMat.matId}" style="padding:4px;font-size:11px;border:1px solid #0a84ff;border-radius:4px;background:#fff;width:70px" onchange="const v=this.value; if(v) applyCatalogMatch('${newMat.matId}',v); this.value=''" title="Velg fra katalog">
+              <option value="">🔍 Kat</option>
+            </select>
+          </div>
+        </td>
+        <td style="text-align:right;padding:6px">
+          <input type="number" class="calcMatQty" data-mat-id="${newMat.matId}" value="1" step="0.1" min="0" style="width:55px;padding:4px;border:1px solid #ddd;border-radius:4px;font-size:11px;text-align:right" onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
+        </td>
+        <td style="text-align:right;padding:6px">
+          <input type="number" class="calcMatCost" data-mat-id="${newMat.matId}" value="0.00" step="0.01" min="0" style="width:60px;padding:4px;border:1px solid #ddd;border-radius:4px;font-size:11px;text-align:right" onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
+        </td>
+        <td style="text-align:right;padding:6px">
+          <input type="number" class="calcMatWaste" data-mat-id="${newMat.matId}" value="0" step="1" min="0" max="100" style="width:50px;padding:4px;border:1px solid #ddd;border-radius:4px;font-size:11px;text-align:right" onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
+        </td>
+        <td style="text-align:right;padding:6px;font-weight:700">
+          <span class="calcMatRowTotal" data-mat-id="${newMat.matId}" style="color:#0a84ff">kr 0</span>
+        </td>
+        <td style="text-align:center;padding:6px">
+          <button class="btn" style="padding:2px 6px;font-size:10px;background:#fff3cd;border:1px solid #ffc107;cursor:pointer" onclick="deleteCalcMaterial('${newMat.matId}')">🗑️</button>
+        </td>`;
+        tbody.appendChild(newRow);
+      }
+    };
+
+    // Update send button state
+    window.updateCalcSendButtonUI=function(){
+      const result=window._lastCalcResult;
+      const btnsDiv=document.querySelector('div[style*="display:flex"][style*="gap:8px"]');
+      if(!btnsDiv||!result) return;
+      btnsDiv.innerHTML=result.sentToOffer
+        ?`<button class="btn" style="flex:1;background:#e8f5e9;color:#2e7d32;border:1px solid #b7e7bb;cursor:not-allowed" disabled>✅ Sendt til tilbud</button><button class="btn secondary" style="flex:1" onclick="doAddCalcToMaterials()">➕ Legg i materialliste</button>`
+        :`<button class="btn primary" style="flex:1;background:#0a84ff" onclick="doSendCalcToOffer()">📤 Send til tilbud</button><button class="btn secondary" style="flex:1" onclick="doAddCalcToMaterials()">➕ Legg i materialliste</button>`;
+    };
+
+    window.doSendCalcToOffer=function(){
+      const p=getProject(currentProjectId); if(!p) return;
+      const result=window._lastCalcResult; if(!result) return;
+      // Safety check: prevent double submission
+      if(result.sentToOffer){
+        alert('Denne kalkylen er allerede sendt til tilbud. Endre inputfelt for å sende en ny kalkyle.');
+        return;
+      }
+
+      // Build price catalog for snapshot
+      const priceCatalogMap=window.buildPriceCatalogMap?window.buildPriceCatalogMap():{};
+
+      // Create snapshot materials from calculated materials with prices
+      const snapshotMats=result.materialsWithPrices.map(m=>({
+        id:uid(),
+        name:m.name,
+        qty:m.qty,
+        unit:m.unit,
+        cost:m.cost||0,
+        waste:m.waste||0,
+        totalCost:m.totalCost||0,
+        markup:p.settings.materialMarkup||0
+      }));
+
+      if(!p.offerPosts) p.offerPosts=[];
+
+      // Create offer post from calculation
+      const calcName=window.calcDefs[result.type]?.label||result.type||'Kalkyle';
+      const totalPrice=result.totalMatCost||0;
+
+      p.offerPosts.push({
+        id:uid(),
+        name:'Kalkyle: '+calcName,
+        description:(result.timer||0)+'t + '+snapshotMats.length+' materialer',
+        type:'calc',
+        price:Math.round(totalPrice),
+        enabled:true,
+        snapshotMaterials:snapshotMats,
+        snapshotCompute:{
+          hoursTotal:result.timer||0,
+          matSaleEx:totalPrice,
+          matCost:totalPrice
+        }
+      });
+
+      // Mark calculation as sent to offer
+      result.sentToOffer=true;
+      window._lastCalcResult=result;
+
+      // Confirm to user and ask if they want to clear old materials
+      const matCount=snapshotMats.length;
+      const msg='✅ Kalkyle sendt til tilbud!\n\n'+matCount+' materiallinjer lagt til som tilbudspost.\n\nØnsker du å fjerne gamle materialer fra materiallisten?';
+      const shouldClear=confirm(msg);
+      if(shouldClear){
+        p.materials=[];
+      }
+
+      persistAndRenderProject();
+      document.getElementById('calcWidget')?.classList.add('hidden');
+
+      // Re-render results to update button status
+      if(document.getElementById('calcResults')){
+        runCalcWidget();
+      }
+    };
+
+    window.doAddCalcToMaterials=function(){
+      if(window._lastCalcResult) window.addCalcResultToProject(window._lastCalcResult);
     };
 
     window.doAddCalcResult=function(){
@@ -1674,21 +1702,104 @@
       }).join('');
     }
 
-    function computeOfferPostsTotal(p){
-      if(!p.offerPosts||!p.offerPosts.length) return {fixed:0,options:0,total:0,hours:0};
-      let fixed=0,options=0,hours=0;
-      p.offerPosts.forEach(post=>{
-        hours+=Number(post.snapshotCompute?.hoursTotal)||0;
-        const price=Number(post.price)||0;
-        if(post.type==='option'){if(post.enabled)options+=price;}else fixed+=price;
-      });
-      return {fixed,options,total:fixed+options,hours};
-    }
+    // computeOfferPostsTotal() er flyttet til calcEngine.js
 
     function addOfferPost(){
       const p=getProject(currentProjectId); if(!p) return;
       if(!p.offerPosts) p.offerPosts=[];
       p.offerPosts.push({id:uid(),name:'Ny post',description:'',type:'fast',price:0,enabled:true});
+      persistAndRenderProject();
+    }
+
+    function addSuggestedMaterialsAsPost(allOperations){
+      const p=getProject(currentProjectId); if(!p) return;
+      const priceCatalogMap=window.buildPriceCatalogMap?window.buildPriceCatalogMap():{};
+
+      if(!p.offerPosts) p.offerPosts=[];
+
+      if(allOperations){
+        // One combined post for all operations
+        var projectEst=window.buildProjectEstimate(p, priceCatalogMap);
+        if(!projectEst || !projectEst.materialer || !projectEst.materialer.length){
+          alert('Ingen foreslåtte materialer å legge til.');
+          return;
+        }
+        var matCount=projectEst.materialer.length;
+        var totalPrice=projectEst.totalMaterialCost||0;
+        if(!confirm('Legge til '+matCount+' materiallinjer som en tilbudspost?\n\nTotal: '+currency(totalPrice)+' (eks. mva)')){
+          return;
+        }
+
+        var suggestedMats=projectEst.materialer.map(function(m){
+          return {
+            name:m.name,
+            qty:m.qty,
+            unit:m.unit,
+            cost:m.cost||0,
+            waste:m.waste||0,
+            totalCost:m.totalCost||0
+          };
+        });
+
+        p.offerPosts.push({
+          id:uid(),
+          name:'Foreslåtte materialer',
+          description:matCount+' materiallinjer fra operasjoner',
+          type:'calc',
+          price:Math.round(totalPrice),
+          enabled:true,
+          snapshotMaterials:suggestedMats,
+          snapshotCompute:{
+            matSaleEx:totalPrice,
+            matCost:totalPrice
+          }
+        });
+      } else {
+        // One post per operation
+        var addedPosts=[];
+        (p.operations||[]).forEach(function(op){
+          var opEst=window.buildOperationEstimate(op, priceCatalogMap);
+          if(opEst && opEst.materialer && opEst.materialer.length){
+            var suggestedMats=opEst.materialer.map(function(m){
+              return {
+                name:m.name,
+                qty:m.qty,
+                unit:m.unit,
+                cost:m.cost||0,
+                waste:m.waste||0,
+                totalCost:m.totalCost||0
+              };
+            });
+            var opPrice=opEst.totalMaterialCost||0;
+            addedPosts.push({
+              type:op.type,
+              count:suggestedMats.length,
+              price:opPrice
+            });
+            p.offerPosts.push({
+              id:uid(),
+              name:'Materialer: '+productionRates[op.type].label,
+              description:suggestedMats.length+' linjer',
+              type:'calc',
+              price:Math.round(opPrice),
+              enabled:true,
+              snapshotMaterials:suggestedMats,
+              snapshotCompute:{
+                matSaleEx:opPrice,
+                matCost:opPrice
+              }
+            });
+          }
+        });
+        if(addedPosts.length===0){
+          alert('Ingen foreslåtte materialer å legge til.');
+          return;
+        }
+        var summary=addedPosts.map(function(ap){return ap.count+' linjer '+ap.type;}).join(', ');
+        var totalAdded=addedPosts.reduce(function(s,ap){return s+ap.price;},0);
+        alert('Lagt til '+addedPosts.length+' tilbudsposter:\n'+summary+'\n\nTotalt: '+currency(totalAdded)+' (eks. mva)');
+      }
+
       persistAndRenderProject();
     }
 
@@ -1838,7 +1949,7 @@
     window.setAllWaste=setAllWaste; window.addCatalogMaterial=addCatalogMaterial; window.clearPriceCatalog=clearPriceCatalog;
     window.toggleFavoriteCatalog=toggleFavoriteCatalog; window.duplicateLastMaterial=duplicateLastMaterial;
     window.applyTemplateById=applyTemplateById; window.openTemplateModal=openTemplateModal; window.deleteUserTemplate=deleteUserTemplate;
-    window.addOfferPost=addOfferPost; window.addCalcPost=addCalcPost; window.updatePost=updatePost;
+    window.addOfferPost=addOfferPost; window.addCalcPost=addCalcPost; window.addSuggestedMaterialsAsPost=addSuggestedMaterialsAsPost; window.updatePost=updatePost;
     window.togglePost=togglePost; window.removePost=removePost; window.movePost=movePost;
     window.closeModal=closeModal; window.backdropClose=backdropClose;
 

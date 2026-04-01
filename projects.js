@@ -13,66 +13,7 @@
 
 
 
-    function compute(project){
-      const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[project.work.risk]||1.1;
-      // hoursTotal = active hours on work tab (not split by people anymore)
-      const hoursTotal=Number(project.work.hours)||0;
-      const laborCost=hoursTotal*(Number(project.work.internalCost)||0);
-      const laborSaleEx=hoursTotal*(Number(project.work.timeRate)||0)*riskFactor;
-      let matCost=0, matSaleEx=0;
-      project.materials.forEach(m=>{
-        const qty=Number(m.qty)||0,cost=Number(m.cost)||0,waste=Number(m.waste)||0,markup=Number(m.markup)||0;
-        const withWaste=qty*cost*(1+waste/100);
-        matCost+=withWaste; matSaleEx+=withWaste*(1+markup/100);
-      });
-      const lhh=Number(project.work.laborHireHours)||0, lhr=Number(project.extras.laborHire)||0;
-      const laborHireTotal=lhh>0?(lhr*lhh):lhr;
-      const driftCost=hoursTotal*(Number(project.extras.driftRate)||0);
-      const subTotal=(project.extras.subcontractors||[]).reduce((s,x)=>s+(Number(x.amount)||0),0);
-      const extrasBase=(Number(project.extras.rental)||0)+(Number(project.extras.waste)||0)+subTotal+laborHireTotal+(Number(project.extras.misc)||0)+(Number(project.extras.scaffolding)||0)+(Number(project.extras.drawings)||0)+driftCost;
-      const rigEx=(laborSaleEx+matSaleEx)*((Number(project.extras.rigPercent)||0)/100);
-      const costPrice=laborCost+matCost+extrasBase+rigEx;
-      const saleEx=laborSaleEx+matSaleEx+extrasBase+rigEx;
-      const saleInc=saleEx*1.25, profit=saleEx-costPrice;
-      const margin=saleEx?(profit/saleEx*100):0;
-
-      // Sum up snapshot materials from offer posts (for internal summary)
-      let snapMatCost=0, snapMatSaleEx=0, snapHours=0, snapLaborSaleEx=0, snapLaborCost=0;
-      (project.offerPosts||[]).forEach(post=>{
-        if(post.snapshotCompute){
-          snapMatCost+=post.snapshotCompute.matCost||0;
-          snapMatSaleEx+=post.snapshotCompute.matSaleEx||0;
-          // Use post.hours override if user has changed it, else use snapshot
-          const postHours=Number(post.hours)||post.snapshotCompute.hoursTotal||0;
-          snapHours+=postHours;
-          // Recalculate labor based on actual hours used
-          const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[project.work.risk]||1.1;
-          const rate=post.snapshotCompute.laborSaleEx/(post.snapshotCompute.hoursTotal||1)/riskFactor;
-          const internalRate=post.snapshotCompute.laborCost/(post.snapshotCompute.hoursTotal||1);
-          snapLaborSaleEx+=postHours*rate*riskFactor;
-          snapLaborCost+=postHours*internalRate;
-        }
-      });
-      const totalMatCost=matCost+snapMatCost;
-      const totalMatSaleEx=matSaleEx+snapMatSaleEx;
-      // totalHours: use explicit override if set, else sum active + snapshot
-      const computedTotal=hoursTotal+snapHours;
-      const totalHours=Number(project.work.hoursOverride)>0
-        ? Number(project.work.hoursOverride)
-        : computedTotal;
-      // Labor = active work tab hours + labor from post snapshots (already has correct rate)
-      const ratePerHour=(Number(project.work.timeRate)||0)*riskFactor;
-      const costPerHour=(Number(project.work.internalCost)||0);
-      const totalLaborSaleEx=hoursTotal*ratePerHour + snapLaborSaleEx;
-      const totalLaborCost=hoursTotal*costPerHour + snapLaborCost;
-      const totalCostPrice=totalLaborCost+totalMatCost+extrasBase+rigEx;
-      const totalSaleEx=totalLaborSaleEx+totalMatSaleEx+extrasBase+rigEx;
-      const totalProfit=totalSaleEx-totalCostPrice;
-      const totalMargin=totalSaleEx?(totalProfit/totalSaleEx*100):0;
-
-      return {hoursTotal,laborCost,laborSaleEx,matCost,matSaleEx,extrasBase,rigEx,costPrice,saleEx,saleInc,vat:saleEx*0.25,profit,margin,db:margin,driftCost,
-        totalMatCost,totalMatSaleEx,totalHours,totalLaborSaleEx,totalLaborCost,totalCostPrice,totalSaleEx,totalProfit,totalMargin};
-    }
+    // compute() er flyttet til calcEngine.js
 
     let currentTab = 'info';
 
@@ -137,7 +78,7 @@
 
     function updateSummary(){
       const p=getProject(currentProjectId); if(!p) return;
-      const c=compute(p), ps=computeOfferPostsTotal(p);
+      const c=window.compute(p), ps=window.computeOfferPostsTotal(p);
       const vatM=p.settings.vatMode==='inc';
       // Update Tømrerarbeid display live
       const laborEl=document.getElementById('summaryLaborVal');
@@ -187,7 +128,7 @@
 
 
         function renderTabWork(p){
-      const cv=compute(p);
+      const cv=window.compute(p);
       return `
         <div style="font-size:13px;font-weight:800;color:var(--muted);margin-bottom:10px">⚙️ Satser</div>
         <div class="row-3">
@@ -258,9 +199,9 @@
       var rateDef=productionRates[op.type]||productionRates.annet;
       var result=calcOperationHours(op);
       var id=op.id;
-      return '<div class="op-row" data-opid="'+id+'" style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:#fff">'
-        // Rad 1: type + mengde + slett
-        +'<div style="display:grid;grid-template-columns:1fr 80px auto;gap:8px;align-items:end;margin-bottom:8px">'
+      return '<div class="op-row" data-opid="'+id+'" style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:'+(op.sentToOffer?'#f0fdf4':'#fff')+'">'
+        // Rad 1: type + mengde + materialer + slett
+        +'<div style="display:grid;grid-template-columns:1fr 80px auto auto auto;gap:8px;align-items:end;margin-bottom:8px">'
           +'<div><label style="font-size:11px;color:var(--muted)">Jobbtype</label>'
           +'<select data-field="type" onchange="updOperation(\''+id+'\',\'type\',this.value)">'
           +Object.entries(productionRates).map(function([k,v]){
@@ -269,7 +210,8 @@
           +'</select></div>'
           +'<div><label style="font-size:11px;color:var(--muted)">'+rateDef.unit+'</label>'
           +'<input type="number" data-field="mengde" value="'+(op.mengde||'')+'" placeholder="0" oninput="updOperation(\''+id+'\',\'mengde\',this.value)" /></div>'
-          +'<button class="btn small danger" onclick="removeOperation(\''+id+'\')" style="margin-bottom:2px">Slett</button>'
+          +'<button class="btn small secondary" onclick="toggleOpMaterials(\''+id+'\')" style="margin-bottom:2px">🛠️ Mat</button>'
+          +(op.sentToOffer?'<span style="padding:6px 10px;background:#d1fae5;color:#065f46;border-radius:6px;font-size:11px;font-weight:700;margin-bottom:2px;white-space:nowrap">✓ Sendt</span>':'<button class="btn small danger" onclick="removeOperation(\''+id+'\')" style="margin-bottom:2px">Slett</button>')
         +'</div>'
         // Rad 2: level + tilkomst + hoyde + kompleksitet
         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">'
@@ -297,6 +239,10 @@
           +'<span style="font-size:12px;color:var(--muted)">Basis: '+result.baseTimer+'t'
           +(result.faktorer.samlet!==1?' | Faktor: x'+result.faktorer.samlet:'')+'</span>'
           +'<span style="font-size:15px;font-weight:800;color:var(--blue)">'+result.faktorTimer+' timer</span>'
+        +'</div>'
+        // Material-panel (skjult per default)
+        +'<div id="op-materials-'+id+'" class="op-materials-panel" style="display:none;margin-top:8px;padding:8px 12px;background:#f9fbff;border:1px solid #dce8ff;border-radius:10px">'
+          +renderOpMaterials(op, id)
         +'</div>'
       +'</div>';
     }
@@ -326,6 +272,143 @@
       +'</div>';
     }
 
+    function buildPriceCatalogMap(){
+      var map = {};
+      if(!state.priceCatalog || !state.priceCatalog.length) return map;
+
+      state.priceCatalog.forEach(function(item){
+        var matchName = item.productName || item.name || '';
+        if(matchName){
+          matchName = matchName.trim();
+          map[matchName] = {
+            cost: item.userPrice || 0,
+            unit: item.unit || 'stk',
+            itemNo: item.itemNo || ''
+          };
+        }
+      });
+      return map;
+    }
+
+    function renderOpMaterials(op, opId){
+      var priceCatalogMap = buildPriceCatalogMap();
+      var est=window.buildOperationEstimate(op, priceCatalogMap);
+      if(!est || !est.materialer || est.materialer.length===0){
+        return '<div style="font-size:12px;color:var(--muted);font-style:italic">Ingen materialforslag for denne jobbtypen.</div>';
+      }
+      var html='<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">Materialer:</div>'
+        +'<table style="width:100%;font-size:11px;border-collapse:collapse">'
+        +'<thead><tr style="border-bottom:1px solid #dce8ff">'
+        +'<th style="text-align:left;padding:4px;color:var(--muted)">Material</th>'
+        +'<th style="text-align:right;padding:4px;color:var(--muted)">Mengde</th>'
+        +'<th style="text-align:right;padding:4px;color:var(--muted)">Pris/enhet</th>'
+        +'<th style="text-align:right;padding:4px;color:var(--muted)">Total</th>'
+        +'</tr></thead><tbody>';
+      est.materialer.forEach(function(m){
+        var pricePerUnit = m.cost > 0 ? currency(m.cost) : '—';
+        var totalPrice = m.totalCost > 0 ? currency(m.totalCost) : '—';
+        var priceNote = m.cost === 0 ? ' style="color:var(--muted)"' : '';
+        var priceClass = m.cost === 0 ? ' title="Pris ikke funnet i katalog"' : '';
+        html+='<tr style="border-bottom:1px solid #eef2ff">'
+          +'<td style="padding:4px">'+escapeHtml(m.name)+' '+( m.waste>0?'<span style="color:var(--muted)">(+'+m.waste+'%)</span>':'')+' </td>'
+          +'<td style="text-align:right;padding:4px">'+m.qty.toFixed(1)+' '+escapeHtml(m.unit)+'</td>'
+          +'<td style="text-align:right;padding:4px'+priceNote+priceClass+'">'+pricePerUnit+'</td>'
+          +'<td style="text-align:right;padding:4px;font-weight:700'+priceNote+priceClass+'">'+totalPrice+'</td>'
+          +'</tr>';
+      });
+      html+='</tbody></table>';
+      if(est.totalMaterialCost > 0){
+        html+='<div style="margin-top:6px;padding:6px;background:#f0f7ff;border-radius:8px;font-weight:700;color:var(--blue)">'
+          +'Totalt materiale: '+currency(est.totalMaterialCost)
+          +'</div>';
+      } else {
+        var hasCatalog = state.priceCatalog && state.priceCatalog.length > 0;
+        var msgStyle = hasCatalog ? 'background:#f0f7ff;color:#1e40af' : 'background:#fffbf0;color:var(--muted)';
+        var msgText = hasCatalog
+          ? '⚠️ Noen materialer ikke funnet i prisfil «'+state.priceFileName+'» — priser settes til 0'
+          : '⚠️ Ingen prisfil lastet — last opp en prisfil for automatiske priser';
+        html+='<div style="margin-top:6px;padding:6px;border-radius:8px;font-size:11px;'+msgStyle+'">'
+          +msgText
+          +'</div>';
+      }
+      if(est.errors && est.errors.length){
+        html+='<div style="margin-top:6px;padding:6px;background:#fee2e2;border-radius:8px;font-size:10px;color:#991b1b">'
+          +'⚠️ '+escapeHtml(est.errors.join(' | '))
+          +'</div>';
+      }
+      // Send to offer button
+      html+='<div style="margin-top:8px;display:flex;gap:6px">'
+        +'<button class="btn small primary" style="flex:1;background:#0a84ff" onclick="sendOperationToOffer(\''+opId+'\')">📤 Send til tilbud</button>'
+        +'</div>';
+      return html;
+    }
+
+    window.toggleOpMaterials=function(opId){
+      var panel=document.getElementById('op-materials-'+opId);
+      if(!panel) return;
+      var isHidden=panel.style.display==='none';
+      panel.style.display=isHidden?'block':'none';
+    };
+
+    window.sendOperationToOffer=function(opId){
+      var p=getProject(currentProjectId); if(!p) return;
+      var op=(p.operations||[]).find(function(o){return o.id===opId;});
+      if(!op) return;
+
+      // Get price catalog and estimate
+      var priceCatalogMap=buildPriceCatalogMap();
+      var est=window.buildOperationEstimate(op, priceCatalogMap);
+      if(!est || !est.materialer || est.materialer.length===0){
+        alert('Ingen materialer å sende for denne operasjonen.');
+        return;
+      }
+
+      // Create snapshot materials with prices
+      var snapshotMats=est.materialer.map(function(m){
+        return {
+          id:uid(),
+          name:m.name,
+          qty:m.qty,
+          unit:m.unit,
+          cost:m.cost||0,
+          waste:m.waste||0,
+          totalCost:m.totalCost||0,
+          markup:p.settings.materialMarkup||0
+        };
+      });
+
+      if(!p.offerPosts) p.offerPosts=[];
+
+      // Create offer post from operation
+      var opTypeName=productionRates[op.type]?.label||op.type||'Operasjon';
+      var totalPrice=est.totalMaterialCost||0;
+
+      p.offerPosts.push({
+        id:uid(),
+        name:'Operasjon: '+opTypeName,
+        description:snapshotMats.length+' materiallinjer fra '+escapeHtml(opTypeName),
+        type:'calc',
+        price:Math.round(totalPrice),
+        enabled:true,
+        snapshotMaterials:snapshotMats,
+        snapshotCompute:{
+          matSaleEx:totalPrice,
+          matCost:totalPrice
+        }
+      });
+
+      // Mark operation as sent to offer
+      op.sentToOffer=true;
+
+      // Ask user if they want to delete from active operations
+      var shouldRemove=confirm('Operasjonen sendt til tilbud!\n\n'+snapshotMats.length+' materiallinjer lagt til som tilbudspost.\n\nØnsker du å fjerne operasjonen fra aktiv kalkyle?');
+      if(shouldRemove){
+        p.operations=p.operations.filter(function(o){return o.id!==opId;});
+      }
+
+      persistAndRenderProject();
+    };
+
     function renderOperations(p){
       var ops=p.operations||[];
       if(!ops.length) return '<div class="empty" style="padding:14px">Ingen operasjoner. Klikk <strong>+ Legg til jobb</strong> for a beregne arbeidstid automatisk.</div>';
@@ -339,7 +422,7 @@
     function refreshOpSummary(){
       var el=document.getElementById('opSummary'); if(!el) return;
       var p=getProject(currentProjectId); if(!p||!p.operations||!p.operations.length){el.innerHTML='';return;}
-      var r=calcProject(p);
+      var r=window.calcProject(p);
       el.innerHTML='<div style="margin-top:10px;padding:14px;background:#f5f8ff;border:1px solid #dce8ff;border-radius:14px">'
         // Timer-oversikt
         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:10px">'
@@ -439,14 +522,14 @@
 
     window.applyCalcProjectHours=function(){
       var p=getProject(currentProjectId); if(!p||!p.operations||!p.operations.length) return;
-      var result=calcProject(p);
+      var result=window.calcProject(p);
       p.work.hours=result.totalTimer;
       persistAndRenderProject();
     };
 
     window.sendCalcProjectToOffer=function(){
       var p=getProject(currentProjectId); if(!p||!p.operations||!p.operations.length) return;
-      var result=calcProject(p);
+      var result=window.calcProject(p);
       showModal(
         '<div class="section-head">'
         +'<div class="section-title">Send kalkyle til tilbud</div>'
@@ -467,7 +550,7 @@
     window.doSendCalcEngine=function(){
       var name=document.getElementById('calcEnginePostName')?.value.trim()||'Kalkyle';
       var p=getProject(currentProjectId); if(!p) return;
-      var result=calcProject(p);
+      var result=window.calcProject(p);
       if(!p.offerPosts) p.offerPosts=[];
       var desc=result.operasjoner.map(function(o){return o.navn+' '+o.mengde+' '+o.enhet+' ('+o.faktorTimer+'t)';}).join(', ');
       p.offerPosts.push({
@@ -503,8 +586,8 @@
       const userTpls=allTpls.filter(t=>!t.builtIn);
       const hasCatalog=state.priceCatalog.length>0;
       return `
-        <!-- KALKYLEMOTOR -->
-        <div class="card" style="background:#fafcff;border:1px solid var(--line);box-shadow:none;margin-bottom:14px">
+        <!-- KALKYLEMOTOR (DEACTIVATED) -->
+        <div class="card" style="background:#fafcff;border:1px solid var(--line);box-shadow:none;margin-bottom:14px;display:none">
           <div class="section-head">
             <div class="section-title">Kalkylemotor</div>
             <button class="btn small secondary" onclick="addOperation()">+ Legg til jobb</button>
@@ -512,13 +595,16 @@
           ${renderOperations(p)}
         </div>
 
-        <!-- KALKULATOR -->
+        <!-- KALKULATOR (MAIN) -->
         <div class="card" style="background:#fafcff;border:1px solid var(--line);box-shadow:none;margin-bottom:14px">
           <div class="section-head">
             <div class="section-title">📐 Time & Material Kalkulator</div>
-            <button class="btn small soft" onclick="toggleCalcWidget()">Åpne / lukk</button>
+            <span style="font-size:11px;color:#0a84ff;font-weight:700;margin-left:auto">← Eneste kalkylesystem</span>
           </div>
-          <div id="calcWidget" class="hidden">
+          <div style="padding:10px 14px;background:#eaf3ff;border-radius:10px;margin-bottom:12px;font-size:12px;color:#0a5fa8">
+            💡 <strong>Bruk denne kalkulatoren for å estimere arbeid:</strong> Velg jobbtype, fyll inn mål, få materialer og pris automatisk, deretter send til tilbud.
+          </div>
+          <div id="calcWidget">
             <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
               <button class="btn small secondary" onclick="document.getElementById('calcRateSettings').classList.toggle('hidden')">⚙️ Mine erfaringstimer</button>
             </div>
@@ -548,7 +634,7 @@
                   <div>
                     <label>${k.charAt(0).toUpperCase()+k.slice(1)} (${v.label})</label>
                     <input type="number" step="0.1" value="${(state.calcRates||{})[k]??v.tPerM2}"
-                      onchange="saveCalcRate('${k}',this.value)" />
+                      onchange="saveCalcRate('${k}',this.value);saveState();if(window.runCalcWidget)runCalcWidget()" />
                   </div>`).join('')}
               </div>
               <div class="footer-note">Standard: Terrasse 2,5 • Kledning 1,3 • Tak 1,8 • Lettvegg 1,0 • Etterisolering 0,9 • Vindu 4,0 t/stk</div>
@@ -556,8 +642,8 @@
           </div>
         </div>
 
-        <!-- MALER -->
-        <div class="card" style="background:#fafcff;border:1px solid var(--line);box-shadow:none;margin-bottom:14px">
+        <!-- MALER (DEACTIVATED) -->
+        <div class="card" style="background:#fafcff;border:1px solid var(--line);box-shadow:none;margin-bottom:14px;display:none">
           <div class="section-head">
             <div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="toggleMalerSection()">
               <div class="section-title">Maler</div>
@@ -662,7 +748,7 @@
 
 
     function renderWarnings(p, c){
-      var warnings=generateWarnings(p, c);
+      var warnings=window.generateWarnings(p, c);
       if(!warnings.length) return '';
       var styles={
         danger:'background:#fef2f2;border:1px solid #fca5a5;color:#991b1b',
@@ -681,8 +767,51 @@
       +'</div>';
     }
 
+    function renderSuggestedMaterialsForOffer(p){
+      var priceCatalogMap = buildPriceCatalogMap();
+      var projectEst = window.buildProjectEstimate(p, priceCatalogMap);
+
+      if(!projectEst || !projectEst.materialer || projectEst.materialer.length===0){
+        return '';
+      }
+
+      // Count how many operations have suggestions
+      var opCount=0;
+      (p.operations||[]).forEach(function(op){
+        var opEst=window.buildOperationEstimate(op, priceCatalogMap);
+        if(opEst && opEst.materialer && opEst.materialer.length) opCount++;
+      });
+
+      return '<div class="card" style="margin-bottom:14px;background:#fffbf0;border:1px solid #fde68a;border-radius:16px">'
+        +'<div class="section-head"><div class="section-title">💡 Foreslåtte materialer fra operasjoner</div></div>'
+        +'<div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">'
+        +'Basert på operasjoner og deres inndata. '
+        +'<strong>Disse er IKKE automatisk med i tilbudssummen ennå.</strong>'
+        +'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+          +'<div style="padding:10px;background:#fff;border:1px solid #fde68a;border-radius:10px">'
+            +'<div style="font-size:13px;font-weight:700;color:var(--muted)">Total foreslåtte materialer:</div>'
+            +'<div style="font-size:18px;font-weight:800;margin-top:4px">'+currency(projectEst.totalMaterialCost||0)+'</div>'
+            +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+projectEst.materialer.length+' linjer</div>'
+          +'</div>'
+          +'<div style="padding:10px;background:#fff;border:1px solid #fde68a;border-radius:10px">'
+            +'<div style="font-size:13px;font-weight:700;color:var(--muted)">Operasjoner med forslag:</div>'
+            +'<div style="font-size:18px;font-weight:800;margin-top:4px">'+opCount+'</div>'
+            +'<div style="font-size:11px;color:var(--muted);margin-top:2px">stk</div>'
+          +'</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
+          +'<button class="btn small primary" onclick="window.addSuggestedMaterialsAsPost(true)" style="flex:1;background:#ff9500;border:none">📦 Legg alle '+projectEst.materialer.length+' linjer som én post</button>'
+          +'<button class="btn small primary" onclick="window.addSuggestedMaterialsAsPost(false)" style="flex:1;background:#a78bfa;border:none">📦 Legg som '+opCount+' poster</button>'
+        +'</div>'
+        +'<div style="font-size:11px;color:var(--muted);font-style:italic;padding:10px;background:#f9f7f0;border-radius:8px">'
+        +'💬 Etter at du legger til, kan du valgfritt slette de manuelle materialene fra «Utregning og materialer»-fanen.'
+        +'</div>'
+        +'</div>';
+    }
+
     function renderTabOffer(p){
-      const c=compute(p), ps=computeOfferPostsTotal(p);
+      const c=window.compute(p), ps=window.computeOfferPostsTotal(p);
       // Exclude raw p.materials from offer sums — only offer posts count
       const offerMatSaleEx=c.totalMatSaleEx-c.matSaleEx;
       const offerMatCost=c.totalMatCost-c.matCost;
@@ -698,6 +827,7 @@
             <button class="btn small secondary" onclick="addCalcPost()">Bruk kalkyle som post</button>
           </div>
         </div>
+        ${renderSuggestedMaterialsForOffer(p)}
         <div class="card" style="margin-top:8px;background:#fafcff">${renderOfferPosts(p)}</div>
         ${p.materials.length?`<div class="footer-note" style="margin:10px 0;padding:10px;background:#fffbea;border:1px solid #fde68a;border-radius:12px">⚠️ Merk: Materialer i materiallisten er ikke med i tilbudssummen. Legg dem inn i tilbudsposter for å få dem med.</div>`:''}
         <div class="card" style="margin-top:14px;background:#fafcff">

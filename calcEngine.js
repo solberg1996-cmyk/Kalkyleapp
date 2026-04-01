@@ -51,13 +51,14 @@ function getCalcRate(type){
  * Kjoring: tur/retur per dag, 80 km/t snitt.
  */
 function calculateDrivingTime(project, direkteTimer) {
-  var ind = project.indirect || {};
-  var km = Number(ind.avstandKm) || 0;
-  var people = Number(ind.people) || Number(project.work.people) || 1;
+  var indirect = (project && project.indirect) || {};
+  var work = (project && project.work) || {};
+  var km = Number(indirect.avstandKm) || 0;
+  var people = Number(indirect.people) || Number(work.people) || 1;
   var timerPerDag = 7.5;
 
-  var dager = Number(ind.antallDager) || Math.max(Math.ceil(direkteTimer / (timerPerDag * people)), 1);
-  var turer = Number(ind.antallTurer) || dager;
+  var dager = Number(indirect.antallDager) || Math.max(Math.ceil(direkteTimer / (timerPerDag * people)), 1);
+  var turer = Number(indirect.antallTurer) || dager;
   var totalKm = turer * km * 2;
   var timer = km > 0 ? round1(totalKm / 80) : 0;
 
@@ -206,27 +207,31 @@ function calcOperationHours(op) {
  * Hovedfunksjon: beregn hele prosjektet fra operations.
  */
 function calcProject(project) {
+  if (!project) return { direkteTimer: 0, indirektTimer: 0, totalTimer: 0, operasjoner: [], indirekte: [], laborSaleEx: 0, laborCost: 0, profit: 0, margin: 0, riskFactor: 1.1, timeRate: 850, internalCost: 450 };
+
+  var work = project.work || {};
   const ops = project.operations || [];
-  const riskFactor = { Lav: 1, Normal: 1.1, 'Høy': 1.2 }[project.work.risk] || 1.1;
-  const timeRate = Number(project.work.timeRate) || 850;
-  const internalCost = Number(project.work.internalCost) || 450;
+  const riskFactor = { Lav: 1, Normal: 1.1, 'Høy': 1.2 }[work.risk] || 1.1;
+  const timeRate = Number(work.timeRate) || 850;
+  const internalCost = Number(work.internalCost) || 450;
 
   var direkteTimer = 0;
   var breakdown = ops.map(function(op) {
+    if (!op) return null;
     var result = calcOperationHours(op);
     direkteTimer += result.faktorTimer;
-    var rateDef = productionRates[op.type] || productionRates.annet;
+    var rateDef = (productionRates && productionRates[op.type]) || (productionRates && productionRates.annet) || { label: '', unit: '' };
     return {
       id: op.id,
-      navn: op.navn || rateDef.label,
+      navn: op.navn || (rateDef && rateDef.label) || '',
       type: op.type,
       mengde: op.mengde,
-      enhet: rateDef.unit,
+      enhet: (rateDef && rateDef.unit) || '',
       baseTimer: result.baseTimer,
       faktorTimer: result.faktorTimer,
       faktorer: result.faktorer,
     };
-  });
+  }).filter(function(x) { return x != null; });
   direkteTimer = round1(direkteTimer);
 
   var indirect = calcIndirectTime(project, direkteTimer);
@@ -257,35 +262,42 @@ function calcProject(project) {
 // ── FINANSIELL KALKYLE (tidl. compute() i projects.js) ───────
 
 function compute(project){
-  const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[project.work.risk]||1.1;
-  const hoursTotal=Number(project.work.hours)||0;
-  const laborCost=hoursTotal*(Number(project.work.internalCost)||0);
-  const laborSaleEx=hoursTotal*(Number(project.work.timeRate)||0)*riskFactor;
+  if (!project) return { hoursTotal: 0, laborCost: 0, laborSaleEx: 0, matCost: 0, matSaleEx: 0, extrasBase: 0, rigEx: 0, costPrice: 0, saleEx: 0, saleInc: 0, vat: 0, profit: 0, margin: 0, db: 0, driftCost: 0, totalMatCost: 0, totalMatSaleEx: 0, totalHours: 0, totalLaborSaleEx: 0, totalLaborCost: 0, totalCostPrice: 0, totalSaleEx: 0, totalProfit: 0, totalMargin: 0 };
+
+  var work = project.work || {};
+  var materials = project.materials || [];
+  var extras = project.extras || {};
+  var offerPosts = project.offerPosts || [];
+
+  const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[work.risk]||1.1;
+  const hoursTotal=Number(work.hours)||0;
+  const laborCost=hoursTotal*(Number(work.internalCost)||0);
+  const laborSaleEx=hoursTotal*(Number(work.timeRate)||0)*riskFactor;
   let matCost=0, matSaleEx=0;
-  project.materials.forEach(m=>{
+  materials.forEach(m=>{
     const qty=Number(m.qty)||0,cost=Number(m.cost)||0,waste=Number(m.waste)||0,markup=Number(m.markup)||0;
     const withWaste=qty*cost*(1+waste/100);
     matCost+=withWaste; matSaleEx+=withWaste*(1+markup/100);
   });
-  const lhh=Number(project.work.laborHireHours)||0, lhr=Number(project.extras.laborHire)||0;
+  const lhh=Number(work.laborHireHours)||0, lhr=Number(extras.laborHire)||0;
   const laborHireTotal=lhh>0?(lhr*lhh):lhr;
-  const driftCost=hoursTotal*(Number(project.extras.driftRate)||0);
-  const subTotal=(project.extras.subcontractors||[]).reduce((s,x)=>s+(Number(x.amount)||0),0);
-  const extrasBase=(Number(project.extras.rental)||0)+(Number(project.extras.waste)||0)+subTotal+laborHireTotal+(Number(project.extras.misc)||0)+(Number(project.extras.scaffolding)||0)+(Number(project.extras.drawings)||0)+driftCost;
-  const rigEx=(laborSaleEx+matSaleEx)*((Number(project.extras.rigPercent)||0)/100);
+  const driftCost=hoursTotal*(Number(extras.driftRate)||0);
+  const subTotal=((extras.subcontractors)||[]).reduce((s,x)=>s+(Number(x.amount)||0),0);
+  const extrasBase=(Number(extras.rental)||0)+(Number(extras.waste)||0)+subTotal+laborHireTotal+(Number(extras.misc)||0)+(Number(extras.scaffolding)||0)+(Number(extras.drawings)||0)+driftCost;
+  const rigEx=(laborSaleEx+matSaleEx)*((Number(extras.rigPercent)||0)/100);
   const costPrice=laborCost+matCost+extrasBase+rigEx;
   const saleEx=laborSaleEx+matSaleEx+extrasBase+rigEx;
   const saleInc=saleEx*1.25, profit=saleEx-costPrice;
   const margin=saleEx?(profit/saleEx*100):0;
 
   let snapMatCost=0, snapMatSaleEx=0, snapHours=0, snapLaborSaleEx=0, snapLaborCost=0;
-  (project.offerPosts||[]).forEach(post=>{
-    if(post.snapshotCompute){
+  offerPosts.forEach(post=>{
+    if(post && post.snapshotCompute){
       snapMatCost+=post.snapshotCompute.matCost||0;
       snapMatSaleEx+=post.snapshotCompute.matSaleEx||0;
       const postHours=Number(post.hours)||post.snapshotCompute.hoursTotal||0;
       snapHours+=postHours;
-      const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[project.work.risk]||1.1;
+      const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[work.risk]||1.1;
       const rate=post.snapshotCompute.laborSaleEx/(post.snapshotCompute.hoursTotal||1)/riskFactor;
       const internalRate=post.snapshotCompute.laborCost/(post.snapshotCompute.hoursTotal||1);
       snapLaborSaleEx+=postHours*rate*riskFactor;
@@ -295,11 +307,11 @@ function compute(project){
   const totalMatCost=matCost+snapMatCost;
   const totalMatSaleEx=matSaleEx+snapMatSaleEx;
   const computedTotal=hoursTotal+snapHours;
-  const totalHours=Number(project.work.hoursOverride)>0
-    ? Number(project.work.hoursOverride)
+  const totalHours=Number(work.hoursOverride)>0
+    ? Number(work.hoursOverride)
     : computedTotal;
-  const ratePerHour=(Number(project.work.timeRate)||0)*riskFactor;
-  const costPerHour=(Number(project.work.internalCost)||0);
+  const ratePerHour=(Number(work.timeRate)||0)*riskFactor;
+  const costPerHour=(Number(work.internalCost)||0);
   const totalLaborSaleEx=hoursTotal*ratePerHour + snapLaborSaleEx;
   const totalLaborCost=hoursTotal*costPerHour + snapLaborCost;
   const totalCostPrice=totalLaborCost+totalMatCost+extrasBase+rigEx;
@@ -315,9 +327,10 @@ function compute(project){
 // ── TILBUDSPOST-SUMMERING (tidl. computeOfferPostsTotal() i app.js) ──
 
 function computeOfferPostsTotal(p){
-  if(!p.offerPosts||!p.offerPosts.length) return {fixed:0,options:0,total:0,hours:0};
+  if(!p || !p.offerPosts || !p.offerPosts.length) return {fixed:0,options:0,total:0,hours:0};
   let fixed=0,options=0,hours=0;
   p.offerPosts.forEach(post=>{
+    if(!post) return;
     hours+=Number(post.snapshotCompute?.hoursTotal)||0;
     const price=Number(post.price)||0;
     if(post.type==='option'){if(post.enabled)options+=price;}else fixed+=price;
@@ -348,58 +361,62 @@ function quickEstimate(type, mengde) {
   return Math.round(mengde * rate * 10) / 10;
 }
 
-/** Lagre brukerens erfaringsrate */
+/** Lagre brukerens erfaringsrate (ren data, ingen UI) */
 function saveCalcRate(type, val){
   state.calcRates=state.calcRates||{};
   state.calcRates[type]=parseFloat(val)||calcDefaults[type]?.tPerM2||1;
-  saveState();
-  runCalcWidget();
 }
 
 
 // ── WARNINGS ─────────────────────────────────────────────────
 
 function generateWarnings(project, computeResult) {
-  var w = [];
+  if (!project) return [];
+
   var ops = project.operations || [];
-  var ind = project.indirect || {};
+  var indirect = project.indirect || {};
+  var extras = project.extras || {};
+  var materials = project.materials || [];
+  var offerPosts = project.offerPosts || [];
   var c = computeResult || {};
   var type = (project.type || '').toLowerCase();
   var margin = c.totalMargin || c.margin || 0;
+  var w = [];
 
   var isRehab = type === 'rehabilitering' || type === 'bad';
   if (isRehab) {
-    var harRiving = ops.some(function(op) { return op.type === 'riving'; });
+    var harRiving = ops.some(function(op) { return op && op.type === 'riving'; });
     if (!harRiving) {
       w.push({ severity: 'warning', text: 'Rehabilitering uten riving — har du husket rivearbeid?' });
     }
-    if (!(project.extras.waste > 0)) {
+    if (!(extras.waste > 0)) {
       w.push({ severity: 'warning', text: 'Ingen avfallskostnad — rehab genererer vanligvis avfall.' });
     }
   }
 
   var harVanskelig = ops.some(function(op) {
-    return op.tilkomst === 'vanskelig' || op.tilkomst === 'svart';
+    return op && (op.tilkomst === 'vanskelig' || op.tilkomst === 'svart');
   });
-  if (harVanskelig && !(project.extras.scaffolding > 0) && !(project.extras.rental > 0)) {
+  if (harVanskelig && !(extras.scaffolding > 0) && !(extras.rental > 0)) {
     w.push({ severity: 'warning', text: 'Vanskelig tilkomst uten stillas eller utstyrsleie — vurder ekstra kostnad.' });
   }
 
   var harHoy = ops.some(function(op) {
-    return op.hoyde === 'middels' || op.hoyde === 'hoy';
+    return op && (op.hoyde === 'middels' || op.hoyde === 'hoy');
   });
   if (harHoy) {
-    if (!(project.extras.scaffolding > 0)) {
+    if (!(extras.scaffolding > 0)) {
       w.push({ severity: 'danger', text: 'Arbeid i hoyde uten stillas — dette er et HMS-krav over 2 meter.' });
     }
-    if (project.work.risk === 'Lav') {
+    var work = project.work || {};
+    if (work.risk === 'Lav') {
       w.push({ severity: 'warning', text: 'Hoydearbeid med lav risikofaktor — vurder Normal eller Hoy.' });
     }
   }
 
   if (project.bebodd) {
     w.push({ severity: 'info', text: 'Bebodd bolig — husk stovtetting, tildekning og ekstra ryddetid.' });
-    var oppryddingPct = ind.oppryddingPct != null ? Number(ind.oppryddingPct) : 3;
+    var oppryddingPct = indirect.oppryddingPct != null ? Number(indirect.oppryddingPct) : 3;
     if (oppryddingPct < 5) {
       w.push({ severity: 'warning', text: 'Bebodd bolig med kun ' + oppryddingPct + '% opprydding — anbefalt minst 5%.' });
     }
@@ -411,35 +428,36 @@ function generateWarnings(project, computeResult) {
     w.push({ severity: 'warning', text: 'Margin under 20% (' + Math.round(margin) + '%) — vurder om prisene dekker uforutsett.' });
   }
 
-  var allMats = (project.materials || []).concat(
-    (project.offerPosts || []).reduce(function(acc, post) {
-      return acc.concat(post.snapshotMaterials || []);
+  var allMats = materials.concat(
+    offerPosts.reduce(function(acc, post) {
+      return acc.concat((post && post.snapshotMaterials) || []);
     }, [])
   );
-  var utenPris = allMats.filter(function(m) { return !m.cost || m.cost === 0; });
+  var utenPris = allMats.filter(function(m) { return m && (!m.cost || m.cost === 0); });
   if (utenPris.length > 0) {
     w.push({ severity: 'warning', text: utenPris.length + ' materiale(r) mangler pris — tilbudet kan bli for lavt.' });
   }
 
   var totalHours = c.totalHours || 0;
-  if (totalHours === 0 && (project.offerPosts || []).length > 0) {
+  if (totalHours === 0 && offerPosts.length > 0) {
     w.push({ severity: 'danger', text: 'Tilbud uten timer — har du lagt inn arbeidstid?' });
   }
 
-  if (!(ind.avstandKm > 0) && ops.length > 0) {
+  if (!(indirect.avstandKm > 0) && ops.length > 0) {
     w.push({ severity: 'info', text: 'Ingen avstand oppgitt — kjoring er ikke med i kalkylen.' });
   }
 
-  if (ind.avstandKm > 60) {
+  if (indirect.avstandKm > 60) {
     w.push({ severity: 'warning', text: 'Lang reisevei (' + ind.avstandKm + ' km) — vurder om kjoring dekkes i tilbudet.' });
   }
 
-  if (!(project.offerPosts || []).length && (project.materials || []).length > 0) {
+  if (!offerPosts.length && materials.length > 0) {
     w.push({ severity: 'info', text: 'Materialer finnes, men ingen tilbudsposter — husk a sende til tilbud.' });
   }
 
-  var harEkstremt = ops.some(function(op) { return op.kompleksitet === 'ekstremt'; });
-  if (harEkstremt && project.work.risk !== 'Høy') {
+  var harEkstremt = ops.some(function(op) { return op && op.kompleksitet === 'ekstremt'; });
+  var work = project.work || {};
+  if (harEkstremt && work.risk !== 'Høy') {
     w.push({ severity: 'warning', text: 'Ekstrem kompleksitet uten hoy risikofaktor — vurder a oke risiko.' });
   }
 
@@ -447,6 +465,151 @@ function generateWarnings(project, computeResult) {
   w.sort(function(a, b) { return (order[a.severity] || 9) - (order[b.severity] || 9); });
 
   return w;
+}
+
+
+// ── SAMLET OPERASJONSESTIMATE (timer + materialer) ─────────────
+
+/**
+ * Beregn komplett estimate for en operasjon (timer + materialer + kostnad)
+ * @param {Object} op - operasjon {type, mengde, level, tilkomst, hoyde, kompleksitet, materialValues, materialChoices}
+ * @param {Object} priceCatalog - {materialName: {cost, unit}, ...} eller tom {}
+ * @returns {Object} {direkteTimer, materialer: [{name, qty, unit, waste, cost, totalCost}, ...], totalMaterialCost, errors: []}
+ */
+function buildOperationEstimate(op, priceCatalog) {
+  if (!op) return { direkteTimer: 0, materialer: [], totalMaterialCost: 0, errors: [] };
+
+  priceCatalog = priceCatalog || {};
+  var errors = [];
+
+  // 1. BEREGN TIMER fra operasjonsdata
+  var timeResult = calcOperationHours(op);
+  var direkteTimer = timeResult.faktorTimer;
+
+  // 2. FORESLÅ MATERIALER (hvis calcDefs finnes for denne typen)
+  var materialer = [];
+  var totalMaterialCost = 0;
+
+  if (window.calcDefs && window.calcDefs[op.type]) {
+    var calcDef = window.calcDefs[op.type];
+    try {
+      // Sett opp inputs fra operasjons materialValues eller calcDef defaults
+      var inputs = {};
+      (calcDef.inputs || []).forEach(function(inp) {
+        inputs[inp.id] = (op.materialValues && op.materialValues[inp.id]) != null
+          ? op.materialValues[inp.id]
+          : inp.default;
+      });
+
+      // Sett opp material-valg fra operasjons materialChoices
+      var mats = op.materialChoices || {};
+
+      // Kjør material-kalkulatoren for denne operasjonstypen
+      var calcResult = calcDef.calc(inputs, mats);
+
+      // Konverter til material-objekt med pris
+      materialer = (calcResult.materialer || []).map(function(m) {
+        var catalogEntry = priceCatalog[m.name] || { cost: 0, unit: m.unit };
+        var qty = Number(m.qty) || 0;
+        var cost = Number(catalogEntry.cost) || 0;
+        var waste = Number(m.waste) || 0;
+
+        // Kostnad = mengde * pris * (1 + waste%)
+        var withWaste = qty * cost * (1 + waste / 100);
+        totalMaterialCost += withWaste;
+
+        return {
+          name: m.name,
+          qty: qty,
+          unit: m.unit || catalogEntry.unit || 'stk',
+          waste: waste,
+          cost: cost,
+          totalCost: Math.round(withWaste)
+        };
+      });
+    } catch (e) {
+      errors.push('Material-beregning feilet for ' + op.type + ': ' + e.message);
+    }
+  }
+
+  return {
+    direkteTimer: direkteTimer,
+    timeResult: timeResult,
+    materialer: materialer,
+    totalMaterialCost: Math.round(totalMaterialCost),
+    errors: errors
+  };
+}
+
+
+/**
+ * Beregn komplett estimate for hele prosjektet (kombinert timer + materialer)
+ * @param {Object} project - prosjekt {operations, work, extras, materials}
+ * @param {Object} priceCatalog - {materialName: {cost, unit}, ...}
+ * @returns {Object} {direkteTimer, indirektTimer, totalTimer, operations: [], totalMaterialCost, totalCost, ...}
+ */
+function buildProjectEstimate(project, priceCatalog) {
+  if (!project) return { direkteTimer: 0, indirektTimer: 0, totalTimer: 0, operations: [], totalMaterialCost: 0, errors: [] };
+
+  priceCatalog = priceCatalog || {};
+  var errors = [];
+
+  // 1. BEREGN TIMER via calcProject()
+  var timeCalc = window.calcProject(project);
+
+  // 2. BEREGN MATERIALER for hver operasjon
+  var ops = project.operations || [];
+  var operationEstimates = [];
+  var totalMaterialCost = 0;
+
+  ops.forEach(function(op) {
+    if (!op) return;
+    var opEst = buildOperationEstimate(op, priceCatalog);
+    totalMaterialCost += opEst.totalMaterialCost || 0;
+
+    operationEstimates.push({
+      operationId: op.id,
+      navn: op.navn || '',
+      type: op.type,
+      estimate: opEst
+    });
+
+    if (opEst.errors && opEst.errors.length) {
+      errors = errors.concat(opEst.errors);
+    }
+  });
+
+  // 3. BEREGN TOTALKOSTNADER
+  var work = project.work || {};
+  var timeRate = Number(work.timeRate) || 850;
+  var internalCost = Number(work.internalCost) || 450;
+  var riskFactor = { Lav: 1, Normal: 1.1, 'Høy': 1.2 }[work.risk] || 1.1;
+
+  var laborCost = timeCalc.totalTimer * internalCost;
+  var laborSaleEx = Math.round(timeCalc.totalTimer * timeRate * riskFactor);
+
+  var totalCost = laborCost + totalMaterialCost;
+  var totalSaleEx = laborSaleEx + totalMaterialCost;
+  var profit = totalSaleEx - totalCost;
+  var margin = totalSaleEx > 0 ? Math.round(profit / totalSaleEx * 1000) / 10 : 0;
+
+  return {
+    direkteTimer: timeCalc.direkteTimer,
+    indirektTimer: timeCalc.indirektTimer,
+    totalTimer: timeCalc.totalTimer,
+
+    laborCost: Math.round(laborCost),
+    laborSaleEx: laborSaleEx,
+
+    operations: operationEstimates,
+    totalMaterialCost: Math.round(totalMaterialCost),
+    totalCost: Math.round(totalCost),
+    totalSaleEx: totalSaleEx,
+    profit: Math.round(profit),
+    margin: margin,
+
+    errors: errors
+  };
 }
 
 
@@ -468,3 +631,5 @@ window.blankOperation = blankOperation;
 window.quickEstimate = quickEstimate;
 window.saveCalcRate = saveCalcRate;
 window.generateWarnings = generateWarnings;
+window.buildOperationEstimate = buildOperationEstimate;
+window.buildProjectEstimate = buildProjectEstimate;
