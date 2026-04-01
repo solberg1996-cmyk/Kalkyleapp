@@ -1755,6 +1755,7 @@
       bindVal('#fCustomer',v=>{ p.customerId=v; const cu=getCustomer(v); p.address=cu?(cu.address||''):''; const el=$('#fAddress'); if(el) el.value=p.address; });
       bindVal('#fAddress',v=>p.address=v); bindVal('#fType',v=>p.type=v); bindVal('#fStart',v=>p.startPref=v);
       bindVal('#fStatus',v=>p.status=v); bindVal('#fDescription',v=>p.description=v); bindVal('#fNote',v=>p.note=v);
+      const beb=$('#fBebodd'); if(beb) beb.addEventListener('change',()=>{ p.bebodd=beb.checked; persistAndUpdate(); });
       const sT=$('#sTimeRate'); if(sT) sT.addEventListener('input',()=>{ p.settings.timeRate=parseVatInput(p,sT.value); p.work.timeRate=p.settings.timeRate; const l=$('#wTimeRate'); if(l&&document.activeElement!==l) l.value=displayVatValue(p,p.work.timeRate); persistAndUpdate(); });
       const sI=$('#sInternalCost'); if(sI) sI.addEventListener('input',()=>{ p.settings.internalCost=Number(sI.value)||0; p.work.internalCost=p.settings.internalCost; const l=$('#wInternalCost'); if(l&&document.activeElement!==l) l.value=p.work.internalCost; persistAndUpdate(); });
       const sD=$('#sDriveCost'); if(sD) sD.addEventListener('input',()=>{ p.settings.driveCost=parseVatInput(p,sD.value); p.extras.driveCost=p.settings.driveCost; const l=$('#eDrive'); if(l&&document.activeElement!==l) l.value=displayVatValue(p,p.extras.driveCost); persistAndUpdate(); });

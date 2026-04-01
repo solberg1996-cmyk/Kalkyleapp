@@ -5,6 +5,8 @@
         work:{people:1,hours:8,timeRate:state.settings.timeRate,internalCost:state.settings.internalCost,risk:'Normal',actualHours:0,laborHireHours:0},
         materials:[], extras:{rental:0,waste:0,subcontractors:[],laborHire:0,rigPercent:10,misc:0,driftRate:0,scaffolding:0,drawings:0},
         offer:{included:'Arbeid, standard materialer og rydding.',excluded:'Skjulte feil og ekstraarbeid.',validity:'14 dager'},
+        bebodd:false,
+        operations:[], indirect:{avstandKm:0,antallDager:0,antallTurer:0,people:1,riggTimer:null,planTimer:null,oppryddingPct:3},
         offerPosts:[], ui:{openSteps:[1,2,3,4,5,6]}
       };
     }
@@ -116,7 +118,7 @@
       }
 
       $('#stepsContainer').innerHTML=tabBar+`<div class="tab-panel">${panel}</div>`;
-      bindProjectEvents(); updateSummary();
+      bindProjectEvents(); updateSummary(); refreshOpSummary();
     }
 
     function switchTab(id){
@@ -176,6 +178,7 @@
           <div><label>Ønsket oppstart</label><select id="fStart"><option ${sel(p.startPref,'Snarest')}>Snarest</option><option ${sel(p.startPref,'Innen 2 uker')}>Innen 2 uker</option><option ${sel(p.startPref,'Innen 1 måned')}>Innen 1 måned</option><option ${sel(p.startPref,'Etter avtale')}>Etter avtale</option></select></div>
           <div><label>Status</label><select id="fStatus"><option ${sel(p.status,'Utkast')}>Utkast</option><option ${sel(p.status,'Sendt')}>Sendt</option><option ${sel(p.status,'Vunnet')}>Vunnet</option><option ${sel(p.status,'Tapt')}>Tapt</option><option ${sel(p.status,'Pågår')}>Pågår</option><option ${sel(p.status,'Ferdig')}>Ferdig</option></select></div>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fBebodd" style="width:auto" ${p.bebodd?'checked':''} /> Bebodd bolig (kunden bor i bygget under arbeidet)</label>
         <label>Beskrivelse</label><textarea id="fDescription">${escapeHtml(p.description)}</textarea>
         <label>Notat</label><textarea id="fNote">${escapeHtml(p.note||'')}</textarea>
         `;
@@ -243,12 +246,272 @@
     }
 
 
+    // ── KALKYLEMOTOR UI ────────────────────────────────────────
+
+    function opSelectHtml(current, factors){
+      return Object.entries(factors).map(function([k,v]){
+        return '<option value="'+k+'" '+(current===k?'selected':'')+'>'+v.label+'</option>';
+      }).join('');
+    }
+
+    function renderOperationRow(op){
+      var rateDef=productionRates[op.type]||productionRates.annet;
+      var result=calcOperationHours(op);
+      var id=op.id;
+      return '<div class="op-row" data-opid="'+id+'" style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:#fff">'
+        // Rad 1: type + mengde + slett
+        +'<div style="display:grid;grid-template-columns:1fr 80px auto;gap:8px;align-items:end;margin-bottom:8px">'
+          +'<div><label style="font-size:11px;color:var(--muted)">Jobbtype</label>'
+          +'<select data-field="type" onchange="updOperation(\''+id+'\',\'type\',this.value)">'
+          +Object.entries(productionRates).map(function([k,v]){
+            return '<option value="'+k+'" '+(op.type===k?'selected':'')+'>'+v.label+'</option>';
+          }).join('')
+          +'</select></div>'
+          +'<div><label style="font-size:11px;color:var(--muted)">'+rateDef.unit+'</label>'
+          +'<input type="number" data-field="mengde" value="'+(op.mengde||'')+'" placeholder="0" oninput="updOperation(\''+id+'\',\'mengde\',this.value)" /></div>'
+          +'<button class="btn small danger" onclick="removeOperation(\''+id+'\')" style="margin-bottom:2px">Slett</button>'
+        +'</div>'
+        // Rad 2: level + tilkomst + hoyde + kompleksitet
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">'
+          +'<div><label style="font-size:11px;color:var(--muted)">Produksjonstakt</label>'
+          +'<select data-field="level" onchange="updOperation(\''+id+'\',\'level\',this.value)">'
+          +'<option value="low" '+(op.level==='low'?'selected':'')+'>Lav ('+rateDef.low+' t/'+rateDef.unit+')</option>'
+          +'<option value="normal" '+((op.level||'normal')==='normal'?'selected':'')+'>Normal ('+rateDef.normal+' t/'+rateDef.unit+')</option>'
+          +'<option value="high" '+(op.level==='high'?'selected':'')+'>Hoy ('+rateDef.high+' t/'+rateDef.unit+')</option>'
+          +'</select></div>'
+          +'<div><label style="font-size:11px;color:var(--muted)">Tilkomst</label>'
+          +'<select data-field="tilkomst" onchange="updOperation(\''+id+'\',\'tilkomst\',this.value)">'
+          +opSelectHtml(op.tilkomst||'normal',accessFactors)
+          +'</select></div>'
+          +'<div><label style="font-size:11px;color:var(--muted)">Hoyde</label>'
+          +'<select data-field="hoyde" onchange="updOperation(\''+id+'\',\'hoyde\',this.value)">'
+          +opSelectHtml(op.hoyde||'bakke',heightFactors)
+          +'</select></div>'
+          +'<div><label style="font-size:11px;color:var(--muted)">Kompleksitet</label>'
+          +'<select data-field="kompleksitet" onchange="updOperation(\''+id+'\',\'kompleksitet\',this.value)">'
+          +opSelectHtml(op.kompleksitet||'normal',complexityFactors)
+          +'</select></div>'
+        +'</div>'
+        // Rad 3: resultat for denne raden
+        +'<div class="op-result" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:8px 12px;background:#f0f7ff;border-radius:10px">'
+          +'<span style="font-size:12px;color:var(--muted)">Basis: '+result.baseTimer+'t'
+          +(result.faktorer.samlet!==1?' | Faktor: x'+result.faktorer.samlet:'')+'</span>'
+          +'<span style="font-size:15px;font-weight:800;color:var(--blue)">'+result.faktorTimer+' timer</span>'
+        +'</div>'
+      +'</div>';
+    }
+
+    function renderIndirectInputs(p){
+      var ind=p.indirect||{};
+      return '<div style="margin-top:12px;padding:12px;background:#fffbf0;border:1px solid #fde68a;border-radius:14px">'
+        +'<div style="font-size:13px;font-weight:800;color:var(--muted);margin-bottom:8px">Prosjektforhold (indirekte tid)</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">'
+          +'<div><label style="font-size:11px;color:var(--muted)">Avstand (km en vei)</label>'
+          +'<input type="number" value="'+(ind.avstandKm||'')+'" placeholder="0" oninput="updIndirect(\'avstandKm\',this.value)" /></div>'
+          +'<div><label style="font-size:11px;color:var(--muted)">Antall dager</label>'
+          +'<input type="number" value="'+(ind.antallDager||'')+'" placeholder="Auto" oninput="updIndirect(\'antallDager\',this.value)" /></div>'
+          +'<div><label style="font-size:11px;color:var(--muted)">Antall turer</label>'
+          +'<input type="number" value="'+(ind.antallTurer||'')+'" placeholder="Auto" oninput="updIndirect(\'antallTurer\',this.value)" /></div>'
+          +'<div><label style="font-size:11px;color:var(--muted)">Personer</label>'
+          +'<input type="number" value="'+(ind.people||1)+'" placeholder="1" oninput="updIndirect(\'people\',this.value)" /></div>'
+        +'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">'
+          +'<div><label style="font-size:11px;color:var(--muted)">Rigg (timer, blank=auto)</label>'
+          +'<input type="number" value="'+(ind.riggTimer!=null?ind.riggTimer:'')+'" placeholder="Auto" oninput="updIndirect(\'riggTimer\',this.value)" /></div>'
+          +'<div><label style="font-size:11px;color:var(--muted)">Planlegging (timer, blank=auto)</label>'
+          +'<input type="number" value="'+(ind.planTimer!=null?ind.planTimer:'')+'" placeholder="Auto" oninput="updIndirect(\'planTimer\',this.value)" /></div>'
+          +'<div><label style="font-size:11px;color:var(--muted)">Opprydding %</label>'
+          +'<input type="number" value="'+(ind.oppryddingPct!=null?ind.oppryddingPct:3)+'" placeholder="3" oninput="updIndirect(\'oppryddingPct\',this.value)" /></div>'
+        +'</div>'
+      +'</div>';
+    }
+
+    function renderOperations(p){
+      var ops=p.operations||[];
+      if(!ops.length) return '<div class="empty" style="padding:14px">Ingen operasjoner. Klikk <strong>+ Legg til jobb</strong> for a beregne arbeidstid automatisk.</div>';
+
+      var rows=ops.map(renderOperationRow).join('');
+      var html=rows+renderIndirectInputs(p)+'<div id="opSummary"></div>';
+      return html;
+    }
+
+    // Oppdater kun summerings-boksen uten full re-render
+    function refreshOpSummary(){
+      var el=document.getElementById('opSummary'); if(!el) return;
+      var p=getProject(currentProjectId); if(!p||!p.operations||!p.operations.length){el.innerHTML='';return;}
+      var r=calcProject(p);
+      el.innerHTML='<div style="margin-top:10px;padding:14px;background:#f5f8ff;border:1px solid #dce8ff;border-radius:14px">'
+        // Timer-oversikt
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:10px">'
+          +'<div><div style="font-size:11px;color:var(--muted);font-weight:700">Direkte timer</div>'
+          +'<div style="font-size:20px;font-weight:800">'+r.direkteTimer+'t</div></div>'
+          +'<div><div style="font-size:11px;color:var(--muted);font-weight:700">Indirekte timer</div>'
+          +'<div style="font-size:20px;font-weight:800">'+r.indirektTimer+'t</div></div>'
+          +'<div><div style="font-size:11px;color:var(--muted);font-weight:700">Totalt</div>'
+          +'<div style="font-size:22px;font-weight:800;color:var(--blue)">'+r.totalTimer+'t</div></div>'
+        +'</div>'
+        // Indirekte breakdown med detaljer
+        +'<div style="margin-bottom:10px">'
+          +r.indirekte.map(function(ip){
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #edf2ff">'
+              +'<div><span style="font-size:12px;font-weight:700">'+ip.label+'</span>'
+              +(ip.detalj?'<span style="font-size:11px;color:var(--muted);margin-left:8px">'+ip.detalj+'</span>':'')
+              +'</div>'
+              +'<span style="font-size:13px;font-weight:800;color:var(--blue)">'+ip.timer+'t</span>'
+            +'</div>';
+          }).join('')
+        +'</div>'
+        // Pris-oversikt
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding-top:10px;border-top:1px solid #dce8ff">'
+          +'<div><div style="font-size:11px;color:var(--muted);font-weight:700">Arbeidspris eks. mva</div>'
+          +'<div style="font-size:17px;font-weight:800">'+currency(r.laborSaleEx)+'</div></div>'
+          +'<div><div style="font-size:11px;color:var(--muted);font-weight:700">Din kostnad</div>'
+          +'<div style="font-size:17px;font-weight:800">'+currency(r.laborCost)+'</div></div>'
+          +'<div><div style="font-size:11px;color:var(--muted);font-weight:700">Margin</div>'
+          +'<div style="font-size:17px;font-weight:800;color:#167a42">'+r.margin+'%</div></div>'
+        +'</div>'
+        +'<div style="margin-top:12px;display:flex;gap:8px">'
+          +'<button class="btn small primary" onclick="applyCalcProjectHours()">Bruk '+r.totalTimer+'t som prosjekttimer</button>'
+          +'<button class="btn small soft" onclick="sendCalcProjectToOffer()">Send til tilbud</button>'
+        +'</div>'
+      +'</div>';
+    }
+
+    window.updIndirect=function(key, val){
+      var p=getProject(currentProjectId); if(!p) return;
+      if(!p.indirect) p.indirect={};
+      // Blank input → null (utlos auto-beregning), ellers tall
+      if(val===''||val==null){
+        p.indirect[key]=(key==='riggTimer'||key==='planTimer')?null:0;
+      } else {
+        p.indirect[key]=Number(val)||0;
+      }
+      p.updatedAt=Date.now(); saveState();
+      refreshOpSummary();
+      updateSummary();
+    };
+
+    // Oppdater resultat-stripen for en enkelt rad uten re-render
+    function refreshOpRow(opId){
+      var p=getProject(currentProjectId); if(!p) return;
+      var op=(p.operations||[]).find(function(o){return o.id===opId;});
+      if(!op) return;
+      var row=document.querySelector('.op-row[data-opid="'+opId+'"]');
+      if(!row) return;
+      var result=calcOperationHours(op);
+      var resEl=row.querySelector('.op-result');
+      if(resEl){
+        resEl.innerHTML='<span style="font-size:12px;color:var(--muted)">Basis: '+result.baseTimer+'t'
+          +(result.faktorer.samlet!==1?' | Faktor: x'+result.faktorer.samlet:'')+'</span>'
+          +'<span style="font-size:15px;font-weight:800;color:var(--blue)">'+result.faktorTimer+' timer</span>';
+      }
+    }
+
+    window.addOperation=function(){
+      var p=getProject(currentProjectId); if(!p) return;
+      if(!p.operations) p.operations=[];
+      p.operations.push(blankOperation());
+      persistAndRenderProject();
+    };
+
+    window.removeOperation=function(id){
+      var p=getProject(currentProjectId); if(!p) return;
+      p.operations=(p.operations||[]).filter(function(o){return o.id!==id;});
+      persistAndRenderProject();
+    };
+
+    // Kjerne: oppdater felt → recalc rad + summary (uten full re-render)
+    window.updOperation=function(id, key, val){
+      var p=getProject(currentProjectId); if(!p) return;
+      var op=(p.operations||[]).find(function(o){return o.id===id;});
+      if(!op) return;
+      op[key]=key==='mengde'?(Number(val)||0):val;
+      // Dropdown-endring av type → full re-render (enhet endres)
+      if(key==='type'){
+        p.updatedAt=Date.now(); saveState(); renderProjectView(); return;
+      }
+      // Alt annet → oppdater kun tall, behold fokus
+      p.updatedAt=Date.now(); saveState();
+      refreshOpRow(id);
+      refreshOpSummary();
+      updateSummary();
+    };
+
+    window.applyCalcProjectHours=function(){
+      var p=getProject(currentProjectId); if(!p||!p.operations||!p.operations.length) return;
+      var result=calcProject(p);
+      p.work.hours=result.totalTimer;
+      persistAndRenderProject();
+    };
+
+    window.sendCalcProjectToOffer=function(){
+      var p=getProject(currentProjectId); if(!p||!p.operations||!p.operations.length) return;
+      var result=calcProject(p);
+      showModal(
+        '<div class="section-head">'
+        +'<div class="section-title">Send kalkyle til tilbud</div>'
+        +'<button class="btn small secondary" onclick="closeModal()">Lukk</button>'
+        +'</div>'
+        +'<label>Navn pa tilbudspost</label>'
+        +'<input id="calcEnginePostName" value="'+escapeAttr(p.name||'Kalkyle')+'" />'
+        +'<div style="margin-top:12px;padding:12px;background:#f5f8ff;border-radius:14px;font-size:13px;color:var(--muted)">'
+        +result.operasjoner.length+' operasjoner | '+result.totalTimer+' timer | '+currency(result.laborSaleEx)+' arbeid'
+        +'</div>'
+        +'<div class="toolbar" style="margin-top:14px">'
+        +'<button class="btn primary" onclick="doSendCalcEngine()">Legg til i tilbud</button>'
+        +'<button class="btn secondary" onclick="closeModal()">Avbryt</button>'
+        +'</div>'
+      );
+    };
+
+    window.doSendCalcEngine=function(){
+      var name=document.getElementById('calcEnginePostName')?.value.trim()||'Kalkyle';
+      var p=getProject(currentProjectId); if(!p) return;
+      var result=calcProject(p);
+      if(!p.offerPosts) p.offerPosts=[];
+      var desc=result.operasjoner.map(function(o){return o.navn+' '+o.mengde+' '+o.enhet+' ('+o.faktorTimer+'t)';}).join(', ');
+      p.offerPosts.push({
+        id:uid(),
+        name:name,
+        description:desc,
+        type:'calc',
+        price:Math.round(result.laborSaleEx),
+        enabled:true,
+        snapshotMaterials:p.materials.map(function(m){return Object.assign({},m);}),
+        snapshotCompute:{
+          hoursTotal:result.totalTimer,
+          laborSaleEx:result.laborSaleEx,
+          laborCost:result.laborCost,
+          matSaleEx:0,
+          matCost:0,
+          costPrice:result.laborCost,
+          saleEx:result.laborSaleEx,
+          saleInc:result.laborSaleEx*1.25,
+          profit:result.profit,
+          margin:result.margin
+        }
+      });
+      p.materials=[];
+      p.work.hours=0;
+      closeModal();
+      persistAndRenderProject();
+    };
+
     function renderTabMaterials(p){
       const allTpls=getAllTemplates();
       const builtIn=allTpls.filter(t=>t.builtIn);
       const userTpls=allTpls.filter(t=>!t.builtIn);
       const hasCatalog=state.priceCatalog.length>0;
       return `
+        <!-- KALKYLEMOTOR -->
+        <div class="card" style="background:#fafcff;border:1px solid var(--line);box-shadow:none;margin-bottom:14px">
+          <div class="section-head">
+            <div class="section-title">Kalkylemotor</div>
+            <button class="btn small secondary" onclick="addOperation()">+ Legg til jobb</button>
+          </div>
+          ${renderOperations(p)}
+        </div>
+
         <!-- KALKULATOR -->
         <div class="card" style="background:#fafcff;border:1px solid var(--line);box-shadow:none;margin-bottom:14px">
           <div class="section-head">
@@ -398,6 +661,26 @@
     }
 
 
+    function renderWarnings(p, c){
+      var warnings=generateWarnings(p, c);
+      if(!warnings.length) return '';
+      var styles={
+        danger:'background:#fef2f2;border:1px solid #fca5a5;color:#991b1b',
+        warning:'background:#fffbeb;border:1px solid #fde68a;color:#92400e',
+        info:'background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af'
+      };
+      var icons={danger:'!!',warning:'!',info:'i'};
+      var iconBg={danger:'#fee2e2;color:#dc2626',warning:'#fef3c7;color:#d97706',info:'#dbeafe;color:#2563eb'};
+      return '<div style="display:flex;flex-direction:column;gap:6px;margin-top:14px;margin-bottom:14px">'
+        +warnings.map(function(w){
+          return '<div style="'+styles[w.severity]+';border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;font-size:13px">'
+            +'<span style="flex-shrink:0;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:'+iconBg[w.severity]+'">'+icons[w.severity]+'</span>'
+            +'<span>'+escapeHtml(w.text)+'</span>'
+          +'</div>';
+        }).join('')
+      +'</div>';
+    }
+
     function renderTabOffer(p){
       const c=compute(p), ps=computeOfferPostsTotal(p);
       // Exclude raw p.materials from offer sums — only offer posts count
@@ -445,6 +728,8 @@
               <div style="font-size:12px;color:var(--muted);margin-top:4px">Kjøring, rigg m.m.</div>
             </div>
           </div>
+
+          ${renderWarnings(p, c)}
 
           <div style="margin-top:14px;padding:16px;background:linear-gradient(135deg,#0f1728,#1a2540);border-radius:16px;color:#fff">
             <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:10px;font-weight:700;letter-spacing:.05em">TOTALOVERSIKT</div>
