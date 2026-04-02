@@ -6,6 +6,9 @@
   <title>KalkyleApp</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="app">
@@ -13,32 +16,32 @@
       <div class="topbar">
         <div>
           <div class="title">Oversikt</div>
-          <div class="subtitle">Kunder, prosjekter og tilbud samlet på ett sted. <span id="syncIndicator" style="font-size:12px;font-weight:600;margin-left:8px;color:#34c759">☁️ Synkronisert</span></div>
+          <div class="subtitle">Kunder, prosjekter og tilbud samlet på ett sted. <span id="syncIndicator" style="font-size:11px;font-weight:600;margin-left:6px;color:var(--green)">☁️ Synkronisert</span></div>
         </div>
         <div class="actions">
           <button class="btn soft" onclick="goToHome()">← Hovedmeny</button>
           <button class="btn secondary" id="backupBtn">Eksporter data</button>
           <button class="btn soft" id="importBtn">Importer data</button>
-          <button class="btn soft" id="settingsBtn" style="font-size:18px;padding:8px 14px">⚙️</button>
+          <button class="btn soft" id="settingsBtn" style="font-size:16px;padding:8px 12px">⚙️</button>
           <button class="btn primary" id="newCustomerBtn">+ Ny kunde</button>
           <button class="btn primary" id="newProjectBtn">+ Nytt prosjekt</button>
           <input type="file" id="importFile" class="hidden" accept="application/json" />
         </div>
       </div>
-      <div class="grid cols-4">
+      <div class="grid cols-4" style="margin-bottom:20px">
         <div class="metric"><div class="label">Kunder</div><div class="value" id="metricCustomers">0</div><div class="sub">Lagrede kunder</div></div>
         <div class="metric"><div class="label">Prosjekter</div><div class="value" id="metricProjects">0</div><div class="sub">Alle prosjekter</div></div>
         <div class="metric"><div class="label">Tilbud sendt</div><div class="value" id="metricSent">0</div><div class="sub">Status = sendt</div></div>
         <div class="metric"><div class="label">Vinnerate</div><div class="value" id="metricWinRate">0%</div><div class="sub">Vunnet av sendt</div></div>
       </div>
-      <div class="grid cols-2" style="margin-top:14px">
+      <div class="grid cols-2">
         <div class="card">
           <div class="section-head">
             <div class="section-title">Kunder</div>
             <button class="btn small secondary" id="newCustomerBtn2">+ Kunde</button>
           </div>
           <input class="search" id="customerSearch" placeholder="Søk kunde, telefon eller e-post" />
-          <div id="customerList" class="list" style="margin-top:12px"></div>
+          <div id="customerList" class="list" style="margin-top:14px"></div>
         </div>
         <div class="card">
           <div class="section-head">
@@ -46,7 +49,7 @@
             <button class="btn small secondary" id="newProjectBtn2">+ Prosjekt</button>
           </div>
           <input class="search" id="projectSearch" placeholder="Søk prosjekt, kunde eller status" />
-          <div id="projectList" class="list" style="margin-top:12px"></div>
+          <div id="projectList" class="list" style="margin-top:14px"></div>
         </div>
       </div>
     </div>
@@ -55,7 +58,7 @@
       <div class="topbar">
         <div>
           <button class="btn secondary small" id="backToDashboard">← Til oversikt</button>
-          <div class="title" id="projectTitle" style="margin-top:10px">Prosjekt</div>
+          <div class="title" id="projectTitle" style="margin-top:12px">Prosjekt</div>
           <div class="subtitle" id="projectSubtitle"></div>
         </div>
         <div class="actions">
@@ -63,8 +66,8 @@
           <button class="btn danger" id="deleteProjectBtn">Slett prosjekt</button>
         </div>
       </div>
-      <div class="card accent-box" style="margin-bottom:14px">
-        <div class="section-head" style="margin-bottom:8px">
+      <div class="card accent-box" style="margin-bottom:20px">
+        <div class="section-head" style="margin-bottom:10px">
           <div class="section-title">Prosjektoversikt</div>
           <div class="toggle-group">
             <button id="toggleEx" class="active">Eks mva</button>
@@ -78,57 +81,57 @@
     </div>
   </div>
 
-  <div id="loginView" style="display:none;position:fixed;inset:0;background:#f5f7fb;z-index:1000;align-items:center;justify-content:center">
-    <div style="background:#fff;border-radius:20px;padding:40px;width:100%;max-width:400px;box-shadow:0 8px 40px rgba(0,0,0,.12)">
-      <div style="text-align:center;margin-bottom:28px">
-        <div style="font-size:32px;margin-bottom:8px">&#127959;</div>
-        <div style="font-size:22px;font-weight:800">KalkyleApp</div>
-        <div style="font-size:13px;color:#888;margin-top:4px">Logg inn for å fortsette</div>
+  <div id="loginView" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:1000;align-items:center;justify-content:center">
+    <div style="background:var(--card);border-radius:20px;padding:40px;width:100%;max-width:400px;box-shadow:0 4px 12px rgba(13,17,23,.05),0 16px 48px rgba(13,17,23,.1);border:1px solid var(--line)">
+      <div style="text-align:center;margin-bottom:32px">
+        <div style="font-size:36px;margin-bottom:10px">&#127959;</div>
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:800;letter-spacing:-.03em">KalkyleApp</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px">Logg inn for a fortsette</div>
       </div>
-      <div id="loginError" style="display:none;background:#fff1f0;border:1px solid #ffd0d0;border-radius:10px;padding:10px 14px;font-size:13px;color:#c0392b;margin-bottom:14px"></div>
-      <label style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase">E-post</label>
-      <input id="loginEmail" type="email" placeholder="din@epost.no" style="width:100%;margin:6px 0 14px;padding:12px 14px;border:1.5px solid #e0e0e0;border-radius:12px;font-size:15px" />
-      <label style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase">Passord</label>
-      <input id="loginPassword" type="password" placeholder="..." style="width:100%;margin:6px 0 20px;padding:12px 14px;border:1.5px solid #e0e0e0;border-radius:12px;font-size:15px" onkeydown="if(event.key==='Enter')doLogin()" />
-      <button onclick="doLogin()" id="loginBtn" style="width:100%;padding:14px;background:#0a84ff;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer">Logg inn</button>
-      <div style="text-align:center;margin-top:14px">
-        <button onclick="showSignup()" style="border:none;background:none;color:#0a84ff;font-size:13px;cursor:pointer;font-weight:600">Ny bruker? Opprett konto</button>
+      <div id="loginError" style="display:none;background:#fff5f5;border:1px solid #f5c6cb;border-radius:10px;padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:14px"></div>
+      <label style="font-family:var(--font-display);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">E-post</label>
+      <input id="loginEmail" type="email" placeholder="din@epost.no" style="width:100%;margin:6px 0 16px;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:14px" />
+      <label style="font-family:var(--font-display);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Passord</label>
+      <input id="loginPassword" type="password" placeholder="..." style="width:100%;margin:6px 0 24px;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:14px" onkeydown="if(event.key==='Enter')doLogin()" />
+      <button onclick="doLogin()" id="loginBtn" style="width:100%;padding:14px;background:var(--text);color:#fff;border:none;border-radius:10px;font-family:var(--font-display);font-size:14px;font-weight:800;cursor:pointer;transition:background .2s">Logg inn</button>
+      <div style="text-align:center;margin-top:16px">
+        <button onclick="showSignup()" style="border:none;background:none;color:var(--blue);font-family:var(--font-display);font-size:13px;cursor:pointer;font-weight:600">Ny bruker? Opprett konto</button>
       </div>
-      <div id="signupExtra" style="display:none;margin-top:14px;border-top:1px solid #f0f0f0;padding-top:14px">
-        <button onclick="doSignup()" style="width:100%;padding:12px;background:#34c759;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer">Opprett konto</button>
-        <div style="text-align:center;margin-top:10px"><button onclick="showLogin()" style="border:none;background:none;color:#888;font-size:12px;cursor:pointer">Tilbake til innlogging</button></div>
+      <div id="signupExtra" style="display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:16px">
+        <button onclick="doSignup()" style="width:100%;padding:12px;background:var(--green);color:#fff;border:none;border-radius:10px;font-family:var(--font-display);font-size:14px;font-weight:700;cursor:pointer">Opprett konto</button>
+        <div style="text-align:center;margin-top:12px"><button onclick="showLogin()" style="border:none;background:none;color:var(--muted);font-size:12px;cursor:pointer">Tilbake til innlogging</button></div>
       </div>
     </div>
   </div>
   <div id="modalHost"></div>
 
   <!-- HOME VIEW -->
-  <div id="homeView" style="display:none;position:fixed;inset:0;background:#f5f7fb;z-index:900;align-items:center;justify-content:center">
+  <div id="homeView" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:900;align-items:center;justify-content:center">
     <div style="width:100%;max-width:480px;padding:24px">
-      <div style="text-align:center;margin-bottom:32px">
-        <div style="font-size:36px;margin-bottom:8px">&#127959;</div>
-        <div style="font-size:24px;font-weight:800">KalkyleApp</div>
-        <div style="font-size:13px;color:#888;margin-top:4px">Velg modul</div>
+      <div style="text-align:center;margin-bottom:36px">
+        <div style="font-size:40px;margin-bottom:10px">&#127959;</div>
+        <div style="font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:-.03em">KalkyleApp</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px">Velg modul</div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <button onclick="goToKalkyle()" style="background:#fff;border:1.5px solid #dce8ff;border-radius:16px;padding:20px 24px;text-align:left;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button onclick="goToKalkyle()" style="background:var(--card);border:1.5px solid #cfe0f8;border-radius:14px;padding:20px 24px;text-align:left;cursor:pointer;box-shadow:var(--shadow-sm);transition:box-shadow .2s,border-color .2s">
           <div style="font-size:22px;margin-bottom:6px">📐</div>
-          <div style="font-size:17px;font-weight:800">Kalkyle / Tilbud</div>
-          <div style="font-size:13px;color:#888;margin-top:2px">Prosjekter, materialer og tilbud</div>
+          <div style="font-family:var(--font-display);font-size:16px;font-weight:800">Kalkyle / Tilbud</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:3px">Prosjekter, materialer og tilbud</div>
         </button>
-        <button onclick="goToMakker()" style="background:#fff;border:1.5px solid #e0e0e0;border-radius:16px;padding:20px 24px;text-align:left;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06);opacity:.7">
+        <button onclick="goToMakker()" style="background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:20px 24px;text-align:left;cursor:pointer;box-shadow:var(--shadow-sm);opacity:.6">
           <div style="font-size:22px;margin-bottom:6px">🤝</div>
-          <div style="font-size:17px;font-weight:800">Makker</div>
-          <div style="font-size:13px;color:#888;margin-top:2px">Kommer</div>
+          <div style="font-family:var(--font-display);font-size:16px;font-weight:800">Makker</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:3px">Kommer</div>
         </button>
-        <button onclick="goToBefaring()" style="background:#fff;border:1.5px solid #e0e0e0;border-radius:16px;padding:20px 24px;text-align:left;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06);opacity:.7">
+        <button onclick="goToBefaring()" style="background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:20px 24px;text-align:left;cursor:pointer;box-shadow:var(--shadow-sm);opacity:.6">
           <div style="font-size:22px;margin-bottom:6px">🔍</div>
-          <div style="font-size:17px;font-weight:800">Befaring</div>
-          <div style="font-size:13px;color:#888;margin-top:2px">Kommer</div>
+          <div style="font-family:var(--font-display);font-size:16px;font-weight:800">Befaring</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:3px">Kommer</div>
         </button>
       </div>
-      <div style="text-align:center;margin-top:24px">
-        <button onclick="_sb.auth.signOut()" style="background:none;border:none;color:#aaa;font-size:13px;cursor:pointer">Logg ut</button>
+      <div style="text-align:center;margin-top:28px">
+        <button onclick="_sb.auth.signOut()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer">Logg ut</button>
       </div>
     </div>
   </div>
@@ -139,12 +142,12 @@
   </div>
 
   <!-- BEFARING VIEW -->
-  <div id="befaringView" style="display:none;position:fixed;inset:0;background:#f5f7fb;z-index:900;align-items:center;justify-content:center">
+  <div id="befaringView" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:900;align-items:center;justify-content:center">
     <div style="text-align:center">
-      <div style="font-size:36px;margin-bottom:12px">🔍</div>
-      <div style="font-size:22px;font-weight:800;margin-bottom:8px">Befaring</div>
-      <div style="font-size:15px;color:#888;margin-bottom:24px">Kommer</div>
-      <button onclick="goToHome()" style="background:#0a84ff;color:#fff;border:none;border-radius:12px;padding:10px 24px;font-weight:700;cursor:pointer">← Tilbake</button>
+      <div style="font-size:40px;margin-bottom:14px">🔍</div>
+      <div style="font-family:var(--font-display);font-size:22px;font-weight:800;margin-bottom:8px">Befaring</div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:28px">Kommer</div>
+      <button onclick="goToHome()" style="background:var(--text);color:#fff;border:none;border-radius:10px;padding:10px 24px;font-family:var(--font-display);font-weight:700;cursor:pointer;font-size:14px">← Tilbake</button>
     </div>
   </div>
 
@@ -248,33 +251,56 @@
 
       <div class="card">
         <div class="section-head"><div class="section-title">🎨 Fargetema</div></div>
-        <div class="row" style="align-items:center">
-          <div>
-            <label>Primærfarge</label>
-            <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
-              <input type="color" id="cColor" style="width:56px;height:44px;border:none;border-radius:10px;cursor:pointer;padding:2px" />
-              <div>
-                <div style="font-size:13px;font-weight:700">Forhåndsvisning</div>
-                <div style="font-size:12px;color:var(--muted)">Brukes i tilbud og app-aksenter</div>
+        <input type="hidden" id="cColor" />
+        <div class="cp-layout">
+          <div class="cp-picker-area">
+            <label>Velg primærfarge</label>
+            <div class="cp-wheel-wrap">
+              <canvas id="cpWheel" width="220" height="220"></canvas>
+              <div id="cpWheelThumb" class="cp-wheel-thumb"></div>
+            </div>
+            <div class="cp-lightness-wrap">
+              <label style="margin-bottom:4px">Lysstyrke</label>
+              <input type="range" id="cpLightness" min="10" max="90" value="45" class="cp-slider" />
+            </div>
+            <div class="cp-hex-row">
+              <div class="cp-swatch-active" id="cpActiveSwatch"></div>
+              <div style="flex:1">
+                <label style="margin:0 0 4px">HEX-verdi</label>
+                <input type="text" id="cpHexInput" maxlength="7" placeholder="#2e75b6" class="cp-hex-input" />
               </div>
             </div>
-            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap" id="colorSwatches">
-              <button onclick="setColor('#2e75b6')" style="width:32px;height:32px;background:#2e75b6;border:none;border-radius:8px;cursor:pointer" title="Blå"></button>
-              <button onclick="setColor('#1a7a4a')" style="width:32px;height:32px;background:#1a7a4a;border:none;border-radius:8px;cursor:pointer" title="Grønn"></button>
-              <button onclick="setColor('#c0392b')" style="width:32px;height:32px;background:#c0392b;border:none;border-radius:8px;cursor:pointer" title="Rød"></button>
-              <button onclick="setColor('#7d3c98')" style="width:32px;height:32px;background:#7d3c98;border:none;border-radius:8px;cursor:pointer" title="Lilla"></button>
-              <button onclick="setColor('#d35400')" style="width:32px;height:32px;background:#d35400;border:none;border-radius:8px;cursor:pointer" title="Oransje"></button>
-              <button onclick="setColor('#1a1a1a')" style="width:32px;height:32px;background:#1a1a1a;border:none;border-radius:8px;cursor:pointer" title="Mørk"></button>
+            <div class="cp-presets">
+              <label style="margin-bottom:6px">Hurtigvalg</label>
+              <div class="cp-preset-row">
+                <button class="cp-preset" data-color="#2e75b6" title="Blå" style="background:#2e75b6"></button>
+                <button class="cp-preset" data-color="#1a7a4a" title="Grønn" style="background:#1a7a4a"></button>
+                <button class="cp-preset" data-color="#c0392b" title="Rød" style="background:#c0392b"></button>
+                <button class="cp-preset" data-color="#7d3c98" title="Lilla" style="background:#7d3c98"></button>
+                <button class="cp-preset" data-color="#d35400" title="Oransje" style="background:#d35400"></button>
+                <button class="cp-preset" data-color="#1a1a1a" title="Mørk" style="background:#1a1a1a"></button>
+                <button class="cp-preset" data-color="#0969da" title="Standard" style="background:#0969da"></button>
+                <button class="cp-preset" data-color="#0e8a6e" title="Teal" style="background:#0e8a6e"></button>
+                <button class="cp-preset" data-color="#8250df" title="Indigo" style="background:#8250df"></button>
+                <button class="cp-preset" data-color="#bf3989" title="Rosa" style="background:#bf3989"></button>
+              </div>
             </div>
           </div>
-          <div style="flex:1;padding:16px">
-            <div id="colorPreviewCard" style="border-radius:14px;overflow:hidden;border:1px solid #eee">
-              <div id="colorPreviewHeader" style="padding:14px 16px;color:#fff;font-weight:800;font-size:15px">Solberg Byggservice AS</div>
-              <div style="padding:12px 16px;font-size:13px;background:#fff">
+          <div class="cp-preview-area">
+            <label>Forhåndsvisning</label>
+            <div class="cp-preview-info">Brukes i tilbud og som appens aksentfarge</div>
+            <div id="colorPreviewCard" class="cp-preview-card">
+              <div id="colorPreviewHeader" class="cp-preview-header">Solberg Byggservice AS</div>
+              <div class="cp-preview-body">
                 <div style="font-weight:700;margin-bottom:4px">Tilbud — Terrasse</div>
                 <div style="color:#888;font-size:12px">Slik vil tilbudet se ut</div>
-                <div id="colorPreviewLine" style="height:3px;margin-top:10px;border-radius:2px"></div>
+                <div id="colorPreviewLine" class="cp-preview-line"></div>
               </div>
+            </div>
+            <div class="cp-preview-samples">
+              <button class="btn primary cp-sample-btn" id="cpSampleBtn" style="pointer-events:none">Eksempel-knapp</button>
+              <div class="cp-sample-pill" id="cpSamplePill">Status</div>
+              <div class="cp-sample-bar" id="cpSampleBar"></div>
             </div>
           </div>
         </div>

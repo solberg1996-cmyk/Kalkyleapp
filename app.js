@@ -798,7 +798,7 @@
 
 
     // Apply accent color from company settings
-    if(state.company?.color && state.company.color!=='#2e75b6'){
+    if(state.company?.color){
       document.documentElement.style.setProperty('--blue', state.company.color);
     }
 

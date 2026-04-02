@@ -107,21 +107,33 @@
     function renderTabInfo(p){
       const opts=['<option value="">Velg kunde</option>'].concat(state.customers.map(c=>`<option value="${c.id}" ${p.customerId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`)).join('');
       return `
-        <div class="row">
-          <div><label>Prosjektnavn</label><input id="fName" value="${escapeAttr(p.name)}" /></div>
-          <div><label>Kunde</label><select id="fCustomer">${opts}</select></div>
+        <div class="tab-section">
+          <div class="tab-section-heading">📋 Prosjektdetaljer</div>
+          <div class="row">
+            <div><label>Prosjektnavn</label><input id="fName" value="${escapeAttr(p.name)}" /></div>
+            <div><label>Adresse</label><input id="fAddress" value="${escapeAttr(p.address)}" /></div>
+          </div>
         </div>
-        <div class="row">
-          <div><label>Adresse</label><input id="fAddress" value="${escapeAttr(p.address)}" /></div>
-          <div><label>Type jobb</label><select id="fType"><option ${sel(p.type,'Terrasse')}>Terrasse</option><option ${sel(p.type,'Lettvegg')}>Lettvegg</option><option ${sel(p.type,'Vindu')}>Vindu</option><option ${sel(p.type,'Listing')}>Listing</option><option ${sel(p.type,'Kledning')}>Kledning</option><option ${sel(p.type,'Etterisolering')}>Etterisolering</option><option ${sel(p.type,'Rehabilitering')}>Rehabilitering</option><option ${sel(p.type,'Bad')}>Bad</option><option ${sel(p.type,'Tak')}>Tak</option><option ${sel(p.type,'Annet')}>Annet</option></select></div>
+        <div class="tab-section">
+          <div class="tab-section-heading">👤 Kunde og type</div>
+          <div class="row">
+            <div><label>Kunde</label><select id="fCustomer">${opts}</select></div>
+            <div><label>Type jobb</label><select id="fType"><option ${sel(p.type,'Terrasse')}>Terrasse</option><option ${sel(p.type,'Lettvegg')}>Lettvegg</option><option ${sel(p.type,'Vindu')}>Vindu</option><option ${sel(p.type,'Listing')}>Listing</option><option ${sel(p.type,'Kledning')}>Kledning</option><option ${sel(p.type,'Etterisolering')}>Etterisolering</option><option ${sel(p.type,'Rehabilitering')}>Rehabilitering</option><option ${sel(p.type,'Bad')}>Bad</option><option ${sel(p.type,'Tak')}>Tak</option><option ${sel(p.type,'Annet')}>Annet</option></select></div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer"><input type="checkbox" id="fBebodd" style="width:auto" ${p.bebodd?'checked':''} /> Bebodd bolig (kunden bor i bygget under arbeidet)</label>
         </div>
-        <div class="row">
-          <div><label>Ønsket oppstart</label><select id="fStart"><option ${sel(p.startPref,'Snarest')}>Snarest</option><option ${sel(p.startPref,'Innen 2 uker')}>Innen 2 uker</option><option ${sel(p.startPref,'Innen 1 måned')}>Innen 1 måned</option><option ${sel(p.startPref,'Etter avtale')}>Etter avtale</option></select></div>
-          <div><label>Status</label><select id="fStatus"><option ${sel(p.status,'Utkast')}>Utkast</option><option ${sel(p.status,'Sendt')}>Sendt</option><option ${sel(p.status,'Vunnet')}>Vunnet</option><option ${sel(p.status,'Tapt')}>Tapt</option><option ${sel(p.status,'Pågår')}>Pågår</option><option ${sel(p.status,'Ferdig')}>Ferdig</option></select></div>
+        <div class="tab-section">
+          <div class="tab-section-heading">📅 Tidsplan og status</div>
+          <div class="row">
+            <div><label>Ønsket oppstart</label><select id="fStart"><option ${sel(p.startPref,'Snarest')}>Snarest</option><option ${sel(p.startPref,'Innen 2 uker')}>Innen 2 uker</option><option ${sel(p.startPref,'Innen 1 måned')}>Innen 1 måned</option><option ${sel(p.startPref,'Etter avtale')}>Etter avtale</option></select></div>
+            <div><label>Status</label><select id="fStatus"><option ${sel(p.status,'Utkast')}>Utkast</option><option ${sel(p.status,'Sendt')}>Sendt</option><option ${sel(p.status,'Vunnet')}>Vunnet</option><option ${sel(p.status,'Tapt')}>Tapt</option><option ${sel(p.status,'Pågår')}>Pågår</option><option ${sel(p.status,'Ferdig')}>Ferdig</option></select></div>
+          </div>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fBebodd" style="width:auto" ${p.bebodd?'checked':''} /> Bebodd bolig (kunden bor i bygget under arbeidet)</label>
-        <label>Beskrivelse</label><textarea id="fDescription">${escapeHtml(p.description)}</textarea>
-        <label>Notat</label><textarea id="fNote">${escapeHtml(p.note||'')}</textarea>
+        <div class="tab-section">
+          <div class="tab-section-heading">📝 Notater</div>
+          <label>Beskrivelse</label><textarea id="fDescription">${escapeHtml(p.description)}</textarea>
+          <label>Notat</label><textarea id="fNote">${escapeHtml(p.note||'')}</textarea>
+        </div>
         `;
     }
 
@@ -130,60 +142,60 @@
         function renderTabWork(p){
       const cv=window.compute(p);
       return `
-        <div style="font-size:13px;font-weight:800;color:var(--muted);margin-bottom:10px">⚙️ Satser</div>
-        <div class="row-3">
-          <div><label>Timepris eks. mva</label><input id="wTimeRate" type="number" value="${displayVatValue(p,p.work.timeRate)}" /></div>
-          <div><label>Intern timekost</label><input id="wInternalCost" type="number" value="${p.work.internalCost}" /></div>
-          <div></div>
-        </div>
-        <div class="row-3" style="margin-top:8px">
-          <div><label>Gyldighet tilbud (dager)</label><input id="oValidity" value="${escapeAttr(p.offer.validity||'14')}" placeholder="14" /></div>
-          <div></div><div></div>
-        </div>
-        <div class="row-3" style="margin-top:8px">
-          <div><label>Kjøring / drift per time</label><input id="sDriveCost" type="number" value="${displayVatValue(p,p.settings.driveCost)}" /></div>
-          <div><label>Påslag materialer %</label><input id="wMatMarkup" type="number" value="${p.settings.materialMarkup}" /></div>
-          <div><label>Rigg & drift %</label><input id="eRig" type="number" value="${p.extras.rigPercent}" /></div>
+        <div class="tab-section">
+          <div class="tab-section-heading">⚙️ Satser</div>
+          <div class="row">
+            <div><label>Timepris eks. mva</label><input id="wTimeRate" type="number" value="${displayVatValue(p,p.work.timeRate)}" /></div>
+            <div><label>Intern timekost</label><input id="wInternalCost" type="number" value="${p.work.internalCost}" /></div>
+          </div>
+          <div class="row-3" style="margin-top:12px">
+            <div><label>Kjøring / drift per time</label><input id="sDriveCost" type="number" value="${displayVatValue(p,p.settings.driveCost)}" /></div>
+            <div><label>Påslag materialer %</label><input id="wMatMarkup" type="number" value="${p.settings.materialMarkup}" /></div>
+            <div><label>Rigg & drift %</label><input id="eRig" type="number" value="${p.extras.rigPercent}" /></div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <div><label>Gyldighet tilbud (dager)</label><input id="oValidity" value="${escapeAttr(p.offer.validity||'14')}" placeholder="14" /></div>
+          </div>
         </div>
 
-        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line)">
-          <div style="font-size:13px;font-weight:800;color:var(--muted);margin-bottom:10px">📋 Prosjektkostnader</div>
+        <div class="tab-section">
+          <div class="tab-section-heading">📋 Prosjektkostnader</div>
           <div class="row-3">
             <div><label>Leie av utstyr</label><input id="eRental" type="number" value="${displayVatValue(p,p.extras.rental)}" /></div>
             <div><label>Avfall / deponi</label><input id="eWaste" type="number" value="${displayVatValue(p,p.extras.waste)}" /></div>
             <div><label>🏗️ Stillas</label><input id="eScaffolding" type="number" value="${displayVatValue(p,p.extras.scaffolding||0)}" /></div>
           </div>
-          <div class="row-3" style="margin-top:8px">
+          <div class="row" style="margin-top:12px">
             <div><label>📐 Tegninger / byggesøknad</label><input id="eDrawings" type="number" value="${displayVatValue(p,p.extras.drawings||0)}" /></div>
             <div><label>Diverse</label><input id="eMisc" type="number" value="${displayVatValue(p,p.extras.misc)}" /></div>
-            <div></div>
-          </div>
-          <div style="margin-top:10px">
-            <label>🔧 Underentreprenører</label>
-            <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;margin-bottom:8px">
-              ${(p.extras.subcontractors||[]).map(s=>`
-                <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center">
-                  <select onchange="updSubcontractor('${s.id}','trade',this.value)" style="padding:10px 12px">
-                    ${['Rørlegger','Elektriker','Maler','Snekker','Flislegger','Tømrer','Annet'].map(t=>`<option value="${t}" ${s.trade===t?'selected':''}>${t}</option>`).join('')}
-                  </select>
-                  <input type="number" placeholder="Beløp" value="${displayVatValue(p,s.amount||0)}" onchange="updSubcontractor('${s.id}','amount',this.value)" />
-                  <button class="btn small danger" onclick="removeSubcontractor('${s.id}')">Slett</button>
-                </div>`).join('')}
-            </div>
-            <button class="btn small soft" onclick="addSubcontractor()">+ Legg til underentreprenør</button>
-            ${(p.extras.subcontractors||[]).length ? `<div class="footer-note" style="margin-top:6px">Total: <strong>${currency((p.extras.subcontractors||[]).reduce((s,x)=>s+(Number(x.amount)||0),0))}</strong></div>` : ''}
           </div>
         </div>
 
-        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line)">
-          <div style="font-size:13px;font-weight:800;color:var(--muted);margin-bottom:10px">👷 Innleid håndverker</div>
+        <div class="tab-section">
+          <div class="tab-section-heading">🔧 Underentreprenører</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
+            ${(p.extras.subcontractors||[]).map(s=>`
+              <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center">
+                <select onchange="updSubcontractor('${s.id}','trade',this.value)" style="padding:10px 12px">
+                  ${['Rørlegger','Elektriker','Maler','Snekker','Flislegger','Tømrer','Annet'].map(t=>`<option value="${t}" ${s.trade===t?'selected':''}>${t}</option>`).join('')}
+                </select>
+                <input type="number" placeholder="Beløp" value="${displayVatValue(p,s.amount||0)}" onchange="updSubcontractor('${s.id}','amount',this.value)" />
+                <button class="btn small danger" onclick="removeSubcontractor('${s.id}')">Slett</button>
+              </div>`).join('')}
+          </div>
+          <button class="btn small soft" onclick="addSubcontractor()">+ Legg til underentreprenør</button>
+          ${(p.extras.subcontractors||[]).length ? `<div class="footer-note" style="margin-top:8px">Total: <strong>${currency((p.extras.subcontractors||[]).reduce((s,x)=>s+(Number(x.amount)||0),0))}</strong></div>` : ''}
+        </div>
+
+        <div class="tab-section">
+          <div class="tab-section-heading">👷 Innleid håndverker</div>
           <div class="row-3">
             <div><label>Timepris innleid</label><input id="wLaborHireRate" type="number" value="${displayVatValue(p,p.extras.laborHire||0)}" /></div>
             <div><label>Antall timer</label><input id="wLaborHireHours" type="number" value="${p.work.laborHireHours||0}" /></div>
             <div><label>Faktiske timer brukt (logging)</label><input id="wActualHours" type="number" value="${p.work.actualHours||0}" /></div>
           </div>
         </div>
-        <div class="footer-note" style="margin-top:8px">Timepris og satser brukes i alle kalkyler for dette prosjektet.</div>`;
+        <div class="footer-note">Timepris og satser brukes i alle kalkyler for dette prosjektet.</div>`;
     }
 
 
@@ -822,68 +834,68 @@
         <div class="card" style="margin-top:14px;background:#fafcff">
           <div class="section-head"><div class="section-title">Oppsummering</div></div>
 
-          <div style="display:flex;align-items:center;gap:12px;background:#f5f8ff;border:1px solid #dce8ff;border-radius:14px;padding:12px 16px;margin-bottom:14px">
-            <div id="offerTotalHoursDisplay" style="font-size:28px;font-weight:800;color:#0a84ff">${ps.hours+c.hoursTotal}t</div>
+          <div class="offer-hours-bar">
+            <div class="hours-value" id="offerTotalHoursDisplay">${ps.hours+c.hoursTotal}t</div>
             <div>
-              <div style="font-size:13px;font-weight:800">⏱️ Totalt timebruk</div>
-              <div id="offerTotalHoursDetail" style="font-size:12px;color:var(--muted)">${c.hoursTotal>0?c.hoursTotal+'t fra arbeid':''} ${ps.hours>0&&c.hoursTotal>0?'+ ':''} ${ps.hours>0?ps.hours+'t fra poster':''}</div>
+              <div class="hours-label">⏱️ Totalt timebruk</div>
+              <div class="hours-detail" id="offerTotalHoursDetail">${c.hoursTotal>0?c.hoursTotal+'t fra arbeid':''} ${ps.hours>0&&c.hoursTotal>0?'+ ':''} ${ps.hours>0?ps.hours+'t fra poster':''}</div>
             </div>
           </div>
 
           <div class="row-3">
-            <div style="padding:12px;background:#f5f8ff;border-radius:14px;border:1px solid #dce8ff">
-              <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:4px">🔨 Tømrerarbeid</div>
-              <div id="summaryLaborVal" style="font-size:20px;font-weight:800">${currency(p.settings.vatMode==='inc'?c.totalLaborSaleEx*1.25:c.totalLaborSaleEx)}</div>
-              <div id="summaryLaborHours" style="font-size:11px;color:var(--muted);margin-top:4px">Totalt: ${c.totalHours}t | Tømrer: ${c.hoursTotal}t | Poster: ${ps.hours}t</div>
+            <div class="offer-stat-card blue-theme">
+              <div class="offer-stat-label">🔨 Tømrerarbeid</div>
+              <div class="offer-stat-value" id="summaryLaborVal">${currency(p.settings.vatMode==='inc'?c.totalLaborSaleEx*1.25:c.totalLaborSaleEx)}</div>
+              <div class="offer-stat-detail" id="summaryLaborHours">Totalt: ${c.totalHours}t | Tømrer: ${c.hoursTotal}t | Poster: ${ps.hours}t</div>
             </div>
-            <div style="padding:12px;background:#f5fff8;border-radius:14px;border:1px solid #c3f0d5">
-              <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:4px">🪵 Materialer</div>
-              <div style="font-size:20px;font-weight:800">${currency(p.settings.vatMode==='inc'?offerMatSaleEx*1.25:offerMatSaleEx)}</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:4px">Innkjøp: ${currency(offerMatCost)}</div>
+            <div class="offer-stat-card green-theme">
+              <div class="offer-stat-label">🪵 Materialer</div>
+              <div class="offer-stat-value">${currency(p.settings.vatMode==='inc'?offerMatSaleEx*1.25:offerMatSaleEx)}</div>
+              <div class="offer-stat-detail">Innkjøp: ${currency(offerMatCost)}</div>
             </div>
-            <div style="padding:12px;background:#fffbf0;border-radius:14px;border:1px solid #fde68a">
-              <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:4px">🚗 Andre kostnader</div>
-              <div style="font-size:20px;font-weight:800">${currency(p.settings.vatMode==='inc'?(c.extrasBase+c.rigEx)*1.25:(c.extrasBase+c.rigEx))}</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:4px">Kjøring, rigg m.m.</div>
+            <div class="offer-stat-card amber-theme">
+              <div class="offer-stat-label">🚗 Andre kostnader</div>
+              <div class="offer-stat-value">${currency(p.settings.vatMode==='inc'?(c.extrasBase+c.rigEx)*1.25:(c.extrasBase+c.rigEx))}</div>
+              <div class="offer-stat-detail">Kjøring, rigg m.m.</div>
             </div>
           </div>
 
           ${renderWarnings(p, c)}
 
-          <div style="margin-top:14px;padding:16px;background:linear-gradient(135deg,#0f1728,#1a2540);border-radius:16px;color:#fff">
-            <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:10px;font-weight:700;letter-spacing:.05em">TOTALOVERSIKT</div>
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px">
-              <div style="background:rgba(255,255,255,.07);border-radius:12px;padding:12px">
-                <div style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700">Pris til kunde eks. mva</div>
-                <div style="font-size:20px;font-weight:800;margin-top:4px">${currency(offerSaleEx)}</div>
+          <div class="offer-total-panel">
+            <div class="panel-label">Totaloversikt</div>
+            <div class="offer-total-grid">
+              <div class="offer-total-item">
+                <div class="item-label">Pris til kunde eks. mva</div>
+                <div class="item-value">${currency(offerSaleEx)}</div>
               </div>
-              <div style="background:rgba(255,255,255,.08);border-radius:12px;padding:12px">
-                <div style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700">Pris til kunde inkl. mva</div>
-                <div style="font-size:22px;font-weight:800;margin-top:4px;color:#6ee7a0">${currency(offerSaleEx*1.25)}</div>
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1)">
-              <div>
-                <div style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700">Din kostnad</div>
-                <div style="font-size:16px;font-weight:800;margin-top:4px">${currency(offerCostPrice)}</div>
-              </div>
-              <div>
-                <div style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700">Fortjeneste</div>
-                <div style="font-size:16px;font-weight:800;margin-top:4px;color:#6ee7a0">${currency(offerProfit)}</div>
-              </div>
-              <div>
-                <div style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700">Margin</div>
-                <div style="font-size:16px;font-weight:800;margin-top:4px">${percent(offerMargin)}</div>
+              <div class="offer-total-item">
+                <div class="item-label">Pris til kunde inkl. mva</div>
+                <div class="item-value highlight">${currency(offerSaleEx*1.25)}</div>
               </div>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1)">
-              <div style="font-size:12px;color:rgba(255,255,255,.5)" id="summaryModeNote">${p.settings.vatMode==='inc'?'Viser inkl. mva':'Viser eks. mva'}</div>
+            <div class="offer-detail-grid">
+              <div class="offer-detail-item">
+                <div class="detail-label">Din kostnad</div>
+                <div class="detail-value">${currency(offerCostPrice)}</div>
+              </div>
+              <div class="offer-detail-item">
+                <div class="detail-label">Fortjeneste</div>
+                <div class="detail-value profit">${currency(offerProfit)}</div>
+              </div>
+              <div class="offer-detail-item">
+                <div class="detail-label">Margin</div>
+                <div class="detail-value">${percent(offerMargin)}</div>
+              </div>
+            </div>
+            <div class="offer-total-footer">
+              <div class="footer-text" id="summaryModeNote">${p.settings.vatMode==='inc'?'Viser inkl. mva':'Viser eks. mva'}</div>
             </div>
           </div>
-          <div class="row-3" style="margin-top:12px">
-            <div><strong>Faste poster</strong><div>${currency(ps.fixed)}</div></div>
-            <div><strong>Valgte opsjoner</strong><div>${currency(ps.options)}</div></div>
-            <div><strong>Tilbudssum poster</strong><div>${currency(ps.total)}</div></div>
+          <div class="offer-bottom-stats">
+            <div class="offer-bottom-stat"><strong>Faste poster</strong><div>${currency(ps.fixed)}</div></div>
+            <div class="offer-bottom-stat"><strong>Valgte opsjoner</strong><div>${currency(ps.options)}</div></div>
+            <div class="offer-bottom-stat"><strong>Tilbudssum poster</strong><div>${currency(ps.total)}</div></div>
           </div>
         </div>`;
     }
