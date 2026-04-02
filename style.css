@@ -92,12 +92,152 @@
 
     .calc-widget-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
     .calc-widget-header .section-title{font-size:18px;font-weight:800;letter-spacing:-.02em}
-    .calc-job-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
-    .calc-job-col label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
-    .calc-job-col select{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#fff;font-size:14px;font-weight:600;color:var(--text);transition:.15s border-color,.15s box-shadow;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
-    .calc-job-col select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(10,132,255,.12);outline:none}
-    .calc-job-col select optgroup{font-weight:700;font-size:13px;color:var(--text);background:#f5f7fb;padding:4px 0}
-    .calc-job-col select option{font-weight:500;color:var(--text);padding:8px 12px}
+    .calc-job-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+
+    /* ── Job column shared ── */
+    .calc-job-col{position:relative}
+    .calc-job-col label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em}
+    .calc-job-col label::before{content:'';display:inline-block;width:8px;height:8px;border-radius:3px;flex-shrink:0}
+    .calc-job-utvendig label::before{background:#2563eb}
+    .calc-job-innvendig label::before{background:#d97706}
+
+    /* ── Select base ── */
+    .calc-job-col select{
+      width:100%;
+      min-height:48px;
+      padding:13px 44px 13px 16px;
+      border-radius:14px;
+      border:2px solid var(--line);
+      background:#fff;
+      font-size:15px;
+      font-weight:600;
+      color:var(--text);
+      cursor:pointer;
+      transition:.18s border-color,.18s box-shadow,.18s background;
+      appearance:none;
+      -webkit-appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg width='14' height='9' viewBox='0 0 14 9' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1.5 1.5L7 7l5.5-5.5' stroke='%236b7280' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;
+      background-position:right 16px center;
+      background-size:14px 9px;
+    }
+    .calc-job-col select:hover{border-color:#c0c9d6;background:#fafbfd}
+    .calc-job-col select:focus{outline:none}
+
+    /* ── Utvendig select accent ── */
+    .calc-job-utvendig select{border-color:#dbe4f0}
+    .calc-job-utvendig select:hover{border-color:#93b4e4;background:#f6f9ff}
+    .calc-job-utvendig select:focus{
+      border-color:#2563eb;
+      box-shadow:0 0 0 4px rgba(37,99,235,.1),0 2px 8px rgba(37,99,235,.06);
+      background-image:url("data:image/svg+xml,%3Csvg width='14' height='9' viewBox='0 0 14 9' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1.5 1.5L7 7l5.5-5.5' stroke='%232563eb' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    }
+
+    /* ── Innvendig select accent ── */
+    .calc-job-innvendig select{border-color:#f0e4d0}
+    .calc-job-innvendig select:hover{border-color:#dab778;background:#fffcf6}
+    .calc-job-innvendig select:focus{
+      border-color:#d97706;
+      box-shadow:0 0 0 4px rgba(217,119,6,.1),0 2px 8px rgba(217,119,6,.06);
+      background-image:url("data:image/svg+xml,%3Csvg width='14' height='9' viewBox='0 0 14 9' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1.5 1.5L7 7l5.5-5.5' stroke='%23d97706' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    }
+
+    /* ── Optgroup and option styling ── */
+    .calc-job-col select optgroup{
+      font-weight:800;
+      font-size:12px;
+      color:#475063;
+      background:#f0f3f8;
+      padding:6px 0 2px;
+      letter-spacing:.02em;
+    }
+    .calc-job-col select option{
+      font-weight:500;
+      font-size:14px;
+      color:var(--text);
+      padding:10px 16px;
+      min-height:44px;
+      line-height:1.4;
+      background:#fff;
+    }
+    .calc-job-col select option:checked{
+      background:linear-gradient(0deg,#eaf3ff 0%,#eaf3ff 100%);
+      font-weight:700;
+    }
+    .calc-job-col select option:hover{background:#f5f8ff}
+
+    /* ── Operation row type select ── */
+    .op-row select[data-field="type"]{
+      min-height:44px;
+      padding:10px 38px 10px 14px;
+      border-radius:12px;
+      border:2px solid var(--line);
+      font-size:14px;
+      font-weight:600;
+      color:var(--text);
+      cursor:pointer;
+      transition:.18s border-color,.18s box-shadow;
+      appearance:none;
+      -webkit-appearance:none;
+      background-color:#fff;
+      background-image:url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;
+      background-position:right 14px center;
+      background-size:12px 8px;
+    }
+    .op-row select[data-field="type"]:hover{border-color:#b0bdd0;background-color:#fafbfe}
+    .op-row select[data-field="type"]:focus{
+      border-color:var(--blue);
+      box-shadow:0 0 0 3px rgba(10,132,255,.1);
+      outline:none;
+    }
+    .op-row select[data-field="type"] optgroup{
+      font-weight:800;
+      font-size:11px;
+      color:#475063;
+      background:#f0f3f8;
+      padding:5px 0 2px;
+      letter-spacing:.02em;
+    }
+    .op-row select[data-field="type"] option{
+      font-weight:500;
+      font-size:13px;
+      color:var(--text);
+      padding:8px 14px;
+      min-height:44px;
+      background:#fff;
+    }
+
+    /* ── All operation row selects (level, tilkomst, etc.) ── */
+    .op-row-factors select{
+      min-height:44px;
+      padding:10px 34px 10px 12px;
+      border-radius:10px;
+      border:1.5px solid var(--line);
+      font-size:13px;
+      font-weight:600;
+      color:var(--text);
+      cursor:pointer;
+      transition:.15s border-color,.15s box-shadow;
+      appearance:none;
+      -webkit-appearance:none;
+      background-color:#fff;
+      background-image:url("data:image/svg+xml,%3Csvg width='10' height='7' viewBox='0 0 10 7' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;
+      background-position:right 12px center;
+      background-size:10px 7px;
+    }
+    .op-row-factors select:hover{border-color:#b0bdd0}
+    .op-row-factors select:focus{
+      border-color:var(--blue);
+      box-shadow:0 0 0 3px rgba(10,132,255,.1);
+      outline:none;
+    }
+    .op-row-factors select option{
+      font-size:13px;
+      padding:8px 12px;
+      min-height:44px;
+    }
 
     /* Difficulty buttons */
     .diff-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -216,4 +356,49 @@
       .op-row-top .btn{width:100%}
       .op-row-factors{grid-template-columns:1fr}
       .calc-actions{flex-direction:column}
+    }
+
+    /* ── Favoritt-dropdown + Legg til rad ───────────────── */
+    .mat-add-row{
+      display:flex;gap:8px;
+    }
+    .fav-dropdown-wrap{position:relative}
+    .fav-dropdown{
+      position:absolute;bottom:100%;left:0;right:0;
+      margin-bottom:6px;
+      background:var(--card);
+      border:1.5px solid var(--line);
+      border-radius:14px;
+      box-shadow:0 8px 32px rgba(16,19,26,.12);
+      z-index:200;
+      max-height:320px;
+      overflow-y:auto;
+      overscroll-behavior:contain;
+    }
+    .fav-dropdown-header{
+      padding:10px 14px 6px;
+      font-size:11px;font-weight:800;
+      text-transform:uppercase;letter-spacing:.04em;
+      color:var(--muted);
+      border-bottom:1px solid var(--line);
+    }
+    .fav-dropdown-item{
+      display:flex;align-items:center;justify-content:space-between;gap:8px;
+      width:100%;padding:10px 14px;
+      border:none;background:none;cursor:pointer;
+      text-align:left;font-size:13px;
+      transition:background .12s;
+    }
+    .fav-dropdown-item:hover{background:var(--blue-soft)}
+    .fav-dropdown-item+.fav-dropdown-item{border-top:1px solid var(--line)}
+    .fav-item-name{font-weight:600;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .fav-item-meta{font-size:11px;color:var(--muted);white-space:nowrap}
+    .modal .fav-dropdown{
+      bottom:auto;top:100%;margin-bottom:0;margin-top:6px;
+      min-width:280px;
+    }
+    .fav-dropdown-footer{
+      padding:8px 14px;font-size:11px;color:var(--muted);
+      border-top:1px solid var(--line);
+      background:#fafbfd;border-radius:0 0 14px 14px;
     }

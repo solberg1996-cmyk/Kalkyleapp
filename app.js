@@ -317,7 +317,7 @@
     };
 
     window.addCalcFavorite=function(name,unit,cost,itemNo){
-      const fav=getCalcFavorites();
+      let fav=getCalcFavorites();
       if(!fav.find(f=>f.name===name)){
         fav.unshift({name,unit,cost,itemNo});
         fav=fav.slice(0,20);
@@ -344,6 +344,54 @@
         if(item) addCalcFavorite(name,item.unit||'stk',item.cost||0,item.itemNo||item.artnr||item.articleNumber||'');
       }
       showMatAutocomplete(matId,document.querySelector('.calcMatName[data-mat-id="'+matId+'"]')?.value||'');
+    };
+
+    window.toggleFavDropdown=function(dropdownId){
+      const dd=document.getElementById(dropdownId);
+      if(!dd) return;
+      const isOpen=!dd.classList.contains('hidden');
+      document.querySelectorAll('.fav-dropdown').forEach(d=>d.classList.add('hidden'));
+      if(isOpen) return;
+      const favs=getCalcFavorites();
+      const context=dropdownId.includes('Modal')?`'modal'`:dropdownId.includes('Calc')?'true':'false';
+      if(!favs.length){
+        dd.innerHTML=`<div class="fav-dropdown-header">Favorittmaterialer</div>
+          <div class="fav-dropdown-footer">Ingen favoritter enda.<br>Marker materialer som ⭐ i prissøk for å lagre dem her.</div>`;
+      } else {
+        dd.innerHTML=`<div class="fav-dropdown-header">Favorittmaterialer</div>`
+          +favs.map(f=>`<button class="fav-dropdown-item" onclick="addFavToProject(${context},'${escapeHtml(f.name)}','${f.unit||'stk'}',${f.cost||0});toggleFavDropdown('${dropdownId}')">
+            <span class="fav-item-name">${escapeHtml(f.name)}</span>
+            <span class="fav-item-meta">${f.unit||'stk'}${f.cost?' · kr '+f.cost:''}</span>
+          </button>`).join('')
+          +`<div class="fav-dropdown-footer">Marker materialer som ⭐ i prissøk for å lagre dem her</div>`;
+      }
+      dd.classList.remove('hidden');
+    };
+
+    document.addEventListener('click',function(e){
+      if(!e.target.closest('.fav-dropdown-wrap')) document.querySelectorAll('.fav-dropdown').forEach(d=>d.classList.add('hidden'));
+    });
+
+    window.addFavToProject=function(context,name,unit,cost){
+      if(context==='modal'){
+        // Tilpass-modal: add to window._cpm
+        if(!window._cpm) return;
+        window._cpm.push({id:(Math.random().toString(36).slice(2,10)),name,qty:1,unit,cost,waste:0,markup:20});
+        rerenderCalcModal();
+      } else if(context===true||context==='calc'){
+        const result=window._lastCalcResult;
+        if(!result) return;
+        const p=getProject(currentProjectId);
+        const calcMarkup=(p?.settings?.materialMarkup)||20;
+        const newMat={matId:uid(),name,qty:1,cost,waste:0,markup:calcMarkup,unit,totalCost:cost};
+        result.materialsWithPrices.push(newMat);
+        runCalcWidget();
+      } else {
+        const p=getProject(currentProjectId);
+        if(!p) return;
+        p.materials.push({id:uid(),name,qty:1,unit,cost,waste:0,markup:p.settings.materialMarkup});
+        persistAndRenderProject();
+      }
     };
 
     window.showMatAutocomplete=function(matId,query){
@@ -696,8 +744,7 @@
             </div>
           </div>
           <div class="inline-actions">
-            <button class="btn small secondary" onclick="toggleFavoriteCatalog('${escapeHtml(item.id)}')">${isFavoriteCatalog(item.id)?'★ Favoritt':'☆ Favoritt'}</button>
-            <button class="btn small primary" onclick="addCatalogMaterial('${escapeHtml(item.id)}')">Legg til</button>
+            <button class="btn small ${isFavoriteCatalog(item.id)?'success':'secondary'}" onclick="toggleFavoriteCatalog('${escapeHtml(item.id)}')">${isFavoriteCatalog(item.id)?'★ Favoritt':'☆ Legg til favoritt'}</button>
           </div>
         </div>
       `).join('');
@@ -710,10 +757,24 @@
 
     function toggleFavoriteCatalog(id){
       const key=String(id); state.favoriteCatalogIds=state.favoriteCatalogIds||[];
-      if(state.favoriteCatalogIds.includes(key)) state.favoriteCatalogIds=state.favoriteCatalogIds.filter(x=>x!==key);
-      else state.favoriteCatalogIds.unshift(key);
+      const item=getCatalogItem(id);
+      const name=item?(item.name||item.productName||''):'';
+      if(state.favoriteCatalogIds.includes(key)){
+        state.favoriteCatalogIds=state.favoriteCatalogIds.filter(x=>x!==key);
+        if(name) removeCalcFavorite(name);
+      } else {
+        state.favoriteCatalogIds.unshift(key);
+        if(item) addCalcFavorite(name,item.unit||'stk',item.userPrice||0,item.itemNo||'');
+      }
       state.favoriteCatalogIds=[...new Set(state.favoriteCatalogIds)].slice(0,30);
-      saveState(); renderProjectView();
+      saveState();
+      // Update button in-place instead of re-rendering (preserves search panel)
+      const isFav=state.favoriteCatalogIds.includes(key);
+      const btns=document.querySelectorAll(`button[onclick="toggleFavoriteCatalog('${key}')"]`);
+      btns.forEach(btn=>{
+        btn.className=`btn small ${isFav?'success':'secondary'}`;
+        btn.textContent=isFav?'★ Favoritt':'☆ Legg til favoritt';
+      });
     }
 
     function rememberRecentCatalog(id){
@@ -1014,7 +1075,13 @@
 
         <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Ant. • Enhet • Innpris • Svinn% • Påslag%</div>
         <div id="calcMatRows">${rows}</div>
-        <button class="btn small soft" style="margin-top:8px" onclick="addBlankToCalcModal()">+ Tom rad</button>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn small soft" onclick="addBlankToCalcModal()">+ Tom rad</button>
+          <div class="fav-dropdown-wrap" style="position:relative">
+            <button class="btn small soft" onclick="toggleFavDropdown('favDropdownModal')">⭐ Favoritter</button>
+            <div id="favDropdownModal" class="fav-dropdown hidden"></div>
+          </div>
+        </div>
 
         <div style="margin-top:14px;padding:12px 16px;background:#f5f8ff;border-radius:14px;border:1px solid #dce8ff;display:flex;justify-content:space-between;align-items:center">
           <div style="font-size:13px;font-weight:700;color:var(--muted)">Materialsum (salgsverdi)</div>
@@ -1052,27 +1119,6 @@
       p.work.hoursOverride=Math.max(0, current+delta);
       persistAndUpdate();
     };
-
-    window.openSendCalcToOfferModal=function(){
-      const p=getProject(currentProjectId); if(!p) return;
-      const c=compute(p);
-      showModal(`
-        <div class="section-head">
-          <div class="section-title">📄 Send til tilbud</div>
-          <button class="btn small secondary" onclick="closeModal()">Lukk</button>
-        </div>
-        <label>Navn på tilbudspost</label>
-        <input id="calcPostName" value="${escapeAttr(p.name||'Kalkyle')}" placeholder="F.eks. Terrasse, Kledning vegg..." />
-        <div style="margin-top:12px;padding:12px;background:#f5f8ff;border-radius:14px;font-size:13px;color:var(--muted)">
-          ${p.materials.length} materialer + ${c.hoursTotal} timer legges til som post
-        </div>
-        <div class="toolbar" style="margin-top:14px">
-          <button class="btn primary" onclick="doSendCalcToOffer()">📄 Legg til i tilbud</button>
-          <button class="btn secondary" onclick="closeModal()">Avbryt</button>
-        </div>
-      `);
-    };
-
 
     // ── OFFER VIEW STATE ─────────────────────────────────────────────────────
         function initOfferPreviewTab(p){
@@ -1386,12 +1432,6 @@
       setTimeout(function(){URL.revokeObjectURL(url);},30000);
     };;
 
-        window.doSendCalcToOffer=function(){
-      const name=document.getElementById('calcPostName')?.value.trim();
-      closeModal();
-      addCalcPost(name);
-    };
-
         window.resetTotalHours=function(){
       const p=getProject(currentProjectId); if(!p) return;
       p.work.hoursOverride=0;
@@ -1680,8 +1720,12 @@
               }).join('')}
             </tbody>
           </table>
-          <div style="margin-bottom:14px">
-            <button class="calc-add-mat-btn" onclick="addCalcMaterial()">+ Legg til materiale</button>
+          <div class="mat-add-row" style="margin-bottom:14px">
+            <button class="calc-add-mat-btn" onclick="addCalcMaterial()" style="flex:1">+ Legg til materiale</button>
+            <div class="fav-dropdown-wrap" style="flex:1;position:relative">
+              <button class="calc-add-mat-btn" onclick="toggleFavDropdown('favDropdownCalc')" style="width:100%">⭐ Favoritter</button>
+              <div id="favDropdownCalc" class="fav-dropdown hidden"></div>
+            </div>
           </div>
 
           <div class="calc-price-grid">
@@ -1757,9 +1801,8 @@
       const calcName=prompt('Navn på posten i tilbudet:',defaultName);
       if(calcName===null) return;
       const totalPrice=result.totalMatCost||0;
-      const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[p.work.risk]||1.1;
       const calcHours=result.timer||0;
-      const calcLaborSaleEx=Math.round(calcHours*(Number(p.work.timeRate)||850)*riskFactor);
+      const calcLaborSaleEx=Math.round(calcHours*(Number(p.work.timeRate)||850));
       const calcLaborCost=Math.round(calcHours*(Number(p.work.internalCost)||0));
       const calcSaleEx=calcLaborSaleEx+totalPrice;
 
@@ -1960,7 +2003,6 @@
       });
 
       // Use pending hours (from ▲▼ buttons) or fall back to existing
-      const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[p.work.risk]||1.1;
       const timeRate=Number(p.work.timeRate)||850;
       const internalCost=Number(p.work.internalCost)||0;
       const prev=post.snapshotCompute||{};
@@ -1971,7 +2013,7 @@
         hoursTotal=post.laborGroups.reduce(function(s,g){return s+(g.hours||0);},0);
         // Recalc each group's labor values
         post.laborGroups.forEach(function(g){
-          g.laborSaleEx=Math.round((g.hours||0)*timeRate*riskFactor);
+          g.laborSaleEx=Math.round((g.hours||0)*timeRate);
           g.laborCost=Math.round((g.hours||0)*internalCost);
         });
       } else {
@@ -1981,7 +2023,7 @@
       }
       window._pendingPostHours=null;
       // Recalculate labor from hours
-      const laborSaleEx=hoursTotal*timeRate*riskFactor;
+      const laborSaleEx=hoursTotal*timeRate;
       const laborCost=hoursTotal*internalCost;
       const saleEx=laborSaleEx+matSaleEx;
       const costPrice=laborCost+matCost;
@@ -2314,38 +2356,6 @@
       persistAndRenderProject();
     }
 
-    function addCalcPost(customName){
-      const p=getProject(currentProjectId); if(!p) return;
-      const c=compute(p); if(!p.offerPosts) p.offerPosts=[];
-      const totalPrice=c.saleEx; // always store as eks. mva; display adjusts via displayVatValue
-      const snapshotMats=p.materials.map(m=>({...m}));
-      p.offerPosts.push({
-        id:uid(),
-        name:customName||(p.name||'Kalkyle'),
-        description:`${c.hoursTotal} timer + materialer`,
-        type:'calc',
-        price:Math.round(totalPrice),
-        enabled:true,
-        snapshotMaterials:snapshotMats,
-        snapshotCompute:{
-          hoursTotal:c.hoursTotal,
-          laborSaleEx:c.laborSaleEx,
-          matSaleEx:c.matSaleEx,
-          matCost:c.matCost,
-          laborCost:c.laborCost,
-          costPrice:c.costPrice,
-          saleEx:c.saleEx,
-          saleInc:c.saleInc,
-          profit:c.profit,
-          margin:c.margin
-        }
-      });
-      // Clear materials from list — they live in the post snapshot now
-      p.materials=[];
-      // Reset work hours so they don't double-count with snapshotCompute
-      p.work.hours=0;
-      persistAndRenderProject();
-    }
 
     window.toggleOfferPost=function(id){
       const p=getProject(currentProjectId); if(!p||!p.offerPosts) return;
@@ -2360,11 +2370,10 @@
       const p=getProject(currentProjectId); if(!p||!p.offerPosts) return;
       const post=p.offerPosts.find(x=>x.id===id); if(!post) return;
       post.hours=Number(val)||0;
-      const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[p.work.risk]||1.1;
       const timeRate=Number(p.work.timeRate)||850;
       const hrs=post.hours||post.snapshotCompute?.hoursTotal||0;
       const matSaleEx=post.snapshotCompute?.matSaleEx||0;
-      post.price=Math.round(hrs*timeRate*riskFactor+matSaleEx);
+      post.price=Math.round(hrs*timeRate+matSaleEx);
       saveState(); updateSummary();
     };
     function togglePost(id,val){ const p=getProject(currentProjectId); if(!p||!p.offerPosts) return; const post=p.offerPosts.find(x=>x.id===id); if(!post) return; post.enabled=!!val; persistAndUpdate(); }
@@ -2465,7 +2474,7 @@
       const sD=$('#sDriveCost'); if(sD) sD.addEventListener('input',()=>{ p.settings.driveCost=parseVatInput(p,sD.value); p.extras.driveCost=p.settings.driveCost; const l=$('#eDrive'); if(l&&document.activeElement!==l) l.value=displayVatValue(p,p.extras.driveCost); persistAndUpdate(); });
       bindNum('#wActualHours',v=>p.work.actualHours=v);
       bindNum('#wLaborHireHours',v=>p.work.laborHireHours=v); bindNumVat('#wLaborHireRate',v=>p.extras.laborHire=v);
-      bindNumVat('#wTimeRate',v=>p.work.timeRate=v); bindNum('#wInternalCost',v=>p.work.internalCost=v); bindVal('#wRisk',v=>p.work.risk=v);
+      bindNumVat('#wTimeRate',v=>p.work.timeRate=v); bindNum('#wInternalCost',v=>p.work.internalCost=v);
       bindNum('#eDriftRate',v=>p.extras.driftRate=v);
       bindNumVat('#eRental',v=>p.extras.rental=v);
       bindNumVat('#eWaste',v=>p.extras.waste=v); bindNumVat('#eScaffolding',v=>p.extras.scaffolding=v); bindNumVat('#eDrawings',v=>p.extras.drawings=v);
@@ -2542,7 +2551,7 @@
     window.setAllWaste=setAllWaste; window.addCatalogMaterial=addCatalogMaterial; window.clearPriceCatalog=clearPriceCatalog;
     window.toggleFavoriteCatalog=toggleFavoriteCatalog; window.duplicateLastMaterial=duplicateLastMaterial;
     window.applyTemplateById=applyTemplateById; window.openTemplateModal=openTemplateModal; window.deleteUserTemplate=deleteUserTemplate;
-    window.addOfferPost=addOfferPost; window.addCalcPost=addCalcPost; window.addSuggestedMaterialsAsPost=addSuggestedMaterialsAsPost; window.updatePost=updatePost;
+    window.addOfferPost=addOfferPost; window.addSuggestedMaterialsAsPost=addSuggestedMaterialsAsPost; window.updatePost=updatePost;
     window.togglePost=togglePost; window.removePost=removePost; window.movePost=movePost;
     window.closeModal=closeModal; window.backdropClose=backdropClose;
 

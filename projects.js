@@ -134,7 +134,7 @@
         <div class="row-3">
           <div><label>Timepris eks. mva</label><input id="wTimeRate" type="number" value="${displayVatValue(p,p.work.timeRate)}" /></div>
           <div><label>Intern timekost</label><input id="wInternalCost" type="number" value="${p.work.internalCost}" /></div>
-          <div><label>Risikofaktor</label><select id="wRisk"><option ${sel(p.work.risk,'Lav')}>Lav (×1.0)</option><option ${sel(p.work.risk,'Normal')}>Normal (×1.1)</option><option ${sel(p.work.risk,'Høy')}>Høy (×1.2)</option></select></div>
+          <div></div>
         </div>
         <div class="row-3" style="margin-top:8px">
           <div><label>Gyldighet tilbud (dager)</label><input id="oValidity" value="${escapeAttr(p.offer.validity||'14')}" placeholder="14" /></div>
@@ -626,7 +626,7 @@
           </div>
           <div id="calcWidget">
             <div class="calc-job-grid">
-              <div class="calc-job-col">
+              <div class="calc-job-col calc-job-utvendig">
                 <label>Utvendig arbeid</label>
                 <select id="calcJobTypeUtvendig" onchange="selectCalcJobCategory('utvendig', this.value)">
                   <option value="">-- Velg utvendig jobb --</option>
@@ -640,7 +640,7 @@
                   ).join('')}
                 </select>
               </div>
-              <div class="calc-job-col">
+              <div class="calc-job-col calc-job-innvendig">
                 <label>Innvendig arbeid</label>
                 <select id="calcJobTypeInnvendig" onchange="selectCalcJobCategory('innvendig', this.value)">
                   <option value="">-- Velg innvendig jobb --</option>
@@ -713,6 +713,7 @@
         </div>
 
           </div>
+
         <!-- PRISFIL OG SØK -->
         <div class="card" style="padding:14px;background:#fafcff;border:1px solid var(--line);box-shadow:none;margin-bottom:14px">
           <div class="row">
@@ -726,64 +727,13 @@
               <div class="footer-note">${state.priceCatalog.length?`Aktiv: ${escapeHtml(state.priceFileName)} • ${state.priceCatalog.length} varer`:'Ingen prisfil lastet opp enda.'}</div>
             </div>
             <div>
-              <label>Søk i materialregister</label>
+              <label>Søk i prisfil — marker som favoritt</label>
               <input id="priceSearchInput" placeholder="Søk varenummer, navn eller beskrivelse" value="" />
             </div>
           </div>
           <div id="priceSearchResults" class="list" style="margin-top:12px"></div>
         </div>
-
-        <!-- FAVORITTER OG SIST BRUKT -->
-        <div class="section-head"><div class="section-title">Favoritter fra prisfil</div></div>
-        <div class="package-grid">${renderQuickCatalogButtons(getFavoriteCatalogItems(),'Ingen favoritter valgt enda.')}</div>
-        <div class="section-head" style="margin-top:14px"><div class="section-title">Sist brukte varer</div></div>
-        <div class="package-grid">${renderQuickCatalogButtons(getRecentCatalogItems(),'Ingen varer brukt fra prisfil enda.')}</div>
-
-        <!-- TILLEGGSPAKKER (skjult midlertidig) -->
-
-        <!-- VERKTØYLINJE -->
-        <div class="toolbar" style="margin-top:14px;align-items:center">
-          <div style="display:flex;align-items:center;gap:8px;background:#f3f6fb;border:1px solid var(--line);border-radius:12px;padding:6px 10px">
-            <span style="font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap">Alle påslag:</span>
-            <select onchange="setAllMarkup(Number(this.value))" style="border:none;background:transparent;font-weight:700;font-size:13px;padding:4px 6px;cursor:pointer">
-              <option value="">Velg %</option>
-              ${[5,8,10,12,15,20,25,30].map(v=>`<option value="${v}">${v}%</option>`).join('')}
-            </select>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;background:#f3f6fb;border:1px solid var(--line);border-radius:12px;padding:6px 10px">
-            <span style="font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap">Alle svinn:</span>
-            <select onchange="setAllWaste(Number(this.value))" style="border:none;background:transparent;font-weight:700;font-size:13px;padding:4px 6px;cursor:pointer">
-              <option value="">Velg %</option>
-              ${[0,5,8,10,12,15,20,25,30].map(v=>`<option value="${v}">${v}%</option>`).join('')}
-            </select>
-          </div>
-          <button class="btn small secondary" onclick="duplicateLastMaterial()">Kopier siste</button>
-          <button class="btn small secondary" onclick="addMaterial()">+ Legg til materiale</button>
-          <button class="btn small soft" onclick="openSendCalcToOfferModal()">📄 Send arbeid til tilbud</button>
-        </div>
-
-        <!-- MATERIALETABELL -->
-        <div class="table-wrap" style="margin-top:14px">
-          <table>
-            <thead><tr><th>Navn / Varenr</th><th>Antall</th><th>Enhet</th><th>Innpris</th><th>Svinn %</th><th>Påslag %</th><th></th></tr></thead>
-            <tbody>
-              ${p.materials.length?p.materials.map(m=>`
-                <tr>
-                  <td>
-                    <input value="${escapeAttr(m.name)}" onchange="updMaterial('${m.id}','name',this.value)" />
-                    ${m.itemNo?`<div style="font-size:11px;color:var(--muted);margin-top:3px;padding-left:2px">🔖 ${escapeHtml(m.itemNo)}</div>`:''}
-                  </td>
-                  <td><input type="number" value="${m.qty}" onchange="updMaterial('${m.id}','qty',this.value)" /></td>
-                  <td><input value="${escapeAttr(m.unit)}" onchange="updMaterial('${m.id}','unit',this.value)" /></td>
-                  <td><input type="number" value="${displayVatValue(p,m.cost)}" onchange="updMaterial('${m.id}','cost',this.value)" style="${m.cost===0?'border-color:#f0a202;background:#fffbea':''}" /></td>
-                  <td><input type="number" value="${m.waste}" onchange="updMaterial('${m.id}','waste',this.value)" /></td>
-                  <td><input type="number" value="${m.markup}" onchange="updMaterial('${m.id}','markup',this.value)" /></td>
-                  <td><button class="btn small danger" onclick="removeMaterial('${m.id}')">Slett</button></td>
-                </tr>`).join(''):`<tr><td colspan="7"><div class="empty">Ingen materialer lagt til enda.</div></td></tr>`}
-            </tbody>
-          </table>
-        </div>
-        ${p.materials.some(m=>m.cost===0)?`<div class="footer-note" style="color:var(--yellow);margin-top:8px">⚠️ Gule felt mangler pris — fyll inn manuelt eller last opp prisfil.</div>`:''}`;
+        `;
     }
 
 
@@ -864,7 +814,6 @@
           <div class="section-title">Tilbudsposter</div>
           <div class="toolbar">
             <button class="btn small secondary" onclick="addOfferPost()">+ Legg til post</button>
-            <button class="btn small secondary" onclick="addCalcPost()">Bruk kalkyle som post</button>
           </div>
         </div>
         ${renderSuggestedMaterialsForOffer(p)}

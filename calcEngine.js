@@ -207,11 +207,10 @@ function calcOperationHours(op) {
  * Hovedfunksjon: beregn hele prosjektet fra operations.
  */
 function calcProject(project) {
-  if (!project) return { direkteTimer: 0, indirektTimer: 0, totalTimer: 0, operasjoner: [], indirekte: [], laborSaleEx: 0, laborCost: 0, profit: 0, margin: 0, riskFactor: 1.1, timeRate: 850, internalCost: 450 };
+  if (!project) return { direkteTimer: 0, indirektTimer: 0, totalTimer: 0, operasjoner: [], indirekte: [], laborSaleEx: 0, laborCost: 0, profit: 0, margin: 0, timeRate: 850, internalCost: 450 };
 
   var work = project.work || {};
   const ops = project.operations || [];
-  const riskFactor = { Lav: 1, Normal: 1.1, 'Høy': 1.2 }[work.risk] || 1.1;
   const timeRate = Number(work.timeRate) || 850;
   const internalCost = Number(work.internalCost) || 450;
 
@@ -237,7 +236,7 @@ function calcProject(project) {
   var indirect = calcIndirectTime(project, direkteTimer);
   var totalTimer = round1(direkteTimer + indirect.totalIndirekte);
 
-  var laborSaleEx = Math.round(totalTimer * timeRate * riskFactor);
+  var laborSaleEx = Math.round(totalTimer * timeRate);
   var laborCost = Math.round(totalTimer * internalCost);
   var profit = laborSaleEx - laborCost;
   var margin = laborSaleEx > 0 ? Math.round(profit / laborSaleEx * 1000) / 10 : 0;
@@ -252,7 +251,6 @@ function calcProject(project) {
     laborCost,
     profit,
     margin,
-    riskFactor,
     timeRate,
     internalCost,
   };
@@ -269,10 +267,9 @@ function compute(project){
   var extras = project.extras || {};
   var offerPosts = project.offerPosts || [];
 
-  const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[work.risk]||1.1;
   const hoursTotal=Number(work.hours)||0;
   const laborCost=hoursTotal*(Number(work.internalCost)||0);
-  const laborSaleEx=hoursTotal*(Number(work.timeRate)||0)*riskFactor;
+  const laborSaleEx=hoursTotal*(Number(work.timeRate)||0);
   let matCost=0, matSaleEx=0;
   materials.forEach(m=>{
     const qty=Number(m.qty)||0,cost=Number(m.cost)||0,waste=Number(m.waste)||0,markup=Number(m.markup)||0;
@@ -297,10 +294,9 @@ function compute(project){
       snapMatSaleEx+=post.snapshotCompute.matSaleEx||0;
       const postHours=Number(post.hours)||post.snapshotCompute.hoursTotal||0;
       snapHours+=postHours;
-      const riskFactor={Lav:1,Normal:1.1,'Høy':1.2}[work.risk]||1.1;
-      const rate=(post.snapshotCompute.laborSaleEx||0)/(post.snapshotCompute.hoursTotal||1)/riskFactor;
+      const rate=(post.snapshotCompute.laborSaleEx||0)/(post.snapshotCompute.hoursTotal||1);
       const internalRate=(post.snapshotCompute.laborCost||0)/(post.snapshotCompute.hoursTotal||1);
-      snapLaborSaleEx+=postHours*rate*riskFactor;
+      snapLaborSaleEx+=postHours*rate;
       snapLaborCost+=postHours*internalRate;
     }
   });
@@ -310,7 +306,7 @@ function compute(project){
   const totalHours=Number(work.hoursOverride)>0
     ? Number(work.hoursOverride)
     : computedTotal;
-  const ratePerHour=(Number(work.timeRate)||0)*riskFactor;
+  const ratePerHour=(Number(work.timeRate)||0);
   const costPerHour=(Number(work.internalCost)||0);
   const totalLaborSaleEx=hoursTotal*ratePerHour + snapLaborSaleEx;
   const totalLaborCost=hoursTotal*costPerHour + snapLaborCost;
@@ -408,10 +404,6 @@ function generateWarnings(project, computeResult) {
     if (!(extras.scaffolding > 0)) {
       w.push({ severity: 'danger', text: 'Arbeid i hoyde uten stillas — dette er et HMS-krav over 2 meter.' });
     }
-    var work = project.work || {};
-    if (work.risk === 'Lav') {
-      w.push({ severity: 'warning', text: 'Hoydearbeid med lav risikofaktor — vurder Normal eller Hoy.' });
-    }
   }
 
   if (project.bebodd) {
@@ -455,11 +447,6 @@ function generateWarnings(project, computeResult) {
     w.push({ severity: 'info', text: 'Materialer finnes, men ingen tilbudsposter — husk a sende til tilbud.' });
   }
 
-  var harEkstremt = ops.some(function(op) { return op && op.kompleksitet === 'ekstremt'; });
-  var work = project.work || {};
-  if (harEkstremt && work.risk !== 'Høy') {
-    w.push({ severity: 'warning', text: 'Ekstrem kompleksitet uten hoy risikofaktor — vurder a oke risiko.' });
-  }
 
   var order = { danger: 0, warning: 1, info: 2 };
   w.sort(function(a, b) { return (order[a.severity] || 9) - (order[b.severity] || 9); });
@@ -583,10 +570,8 @@ function buildProjectEstimate(project, priceCatalog) {
   var work = project.work || {};
   var timeRate = Number(work.timeRate) || 850;
   var internalCost = Number(work.internalCost) || 450;
-  var riskFactor = { Lav: 1, Normal: 1.1, 'Høy': 1.2 }[work.risk] || 1.1;
-
   var laborCost = timeCalc.totalTimer * internalCost;
-  var laborSaleEx = Math.round(timeCalc.totalTimer * timeRate * riskFactor);
+  var laborSaleEx = Math.round(timeCalc.totalTimer * timeRate);
 
   var totalCost = laborCost + totalMaterialCost;
   var totalSaleEx = laborSaleEx + totalMaterialCost;
