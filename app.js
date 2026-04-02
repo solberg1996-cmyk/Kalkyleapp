@@ -1440,6 +1440,27 @@
       if(el) el.classList.toggle('hidden');
     };
 
+    window.toggleRateSettings=function(){
+      const el=document.getElementById('calcRateSettings');
+      if(el) el.classList.toggle('hidden');
+    };
+
+    window.toggleRateSection=function(toggleEl){
+      const isOpen=toggleEl.classList.toggle('open');
+      toggleEl.setAttribute('aria-expanded',isOpen);
+      const body=toggleEl.nextElementSibling;
+      if(body) body.classList.toggle('open',isOpen);
+    };
+
+    window.selectCalcJobCategory=function(category, value){
+      const otherCategory = category === 'utvendig' ? 'innvendig' : 'utvendig';
+      const otherSelect = document.getElementById('calcJobType' + otherCategory.charAt(0).toUpperCase() + otherCategory.slice(1));
+      if(otherSelect) otherSelect.value = '';
+      const hiddenField = document.getElementById('calcJobType');
+      if(hiddenField) hiddenField.value = value;
+      updateCalcWidget();
+    };
+
     window.updateCalcWidget=function(){
       const type=document.getElementById('calcJobType')?.value;
       const def=calcDefs[type];
@@ -1448,37 +1469,36 @@
       if(!inputsEl||!resultsEl) return;
       if(!def){ inputsEl.innerHTML=''; resultsEl.innerHTML=''; return; }
       inputsEl.innerHTML=`
-        <div style="margin-bottom:12px">
+        <div class="calc-inputs-section">
           <label>Vanskelighetsgrad</label>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div class="diff-grid">
             ${Object.entries(difficultyFactors).map(([k,d])=>`
-              <button class="package-btn ${k==='normal'?'user-template':''}" id="diffBtn_${k}"
-                onclick="selectDifficulty('${k}')"
-                style="padding:10px;text-align:center;${k==='normal'?'border-color:#0a84ff;background:#eaf3ff':''}">
-                <div style="font-size:13px;font-weight:800">${d.label}</div>
-                <div style="font-size:11px;color:var(--muted);font-weight:500;margin-top:2px">${d.desc}</div>
-                <div style="font-size:11px;font-weight:700;margin-top:2px;color:var(--blue)">×${d.factor}</div>
+              <button class="diff-btn ${k==='normal'?'active':''}" id="diffBtn_${k}"
+                onclick="selectDifficulty('${k}')">
+                <div class="diff-label">${d.label}</div>
+                <div class="diff-desc">${d.desc}</div>
+                <div class="diff-factor">${d.factor}</div>
               </button>`).join('')}
           </div>
         </div>
         ${def.materialOptions&&def.materialOptions.length?`
-        <div class="row-3" style="margin-bottom:12px">
+        <div class="row-3 calc-inputs-section">
           ${def.materialOptions.map(opt=>`
             <div>
               <label>${opt.label}</label>
-              <select id="calcMat_${opt.id}" onchange="runCalcWidget()" style="padding:10px 12px">
+              <select id="calcMat_${opt.id}" onchange="runCalcWidget()">
                 ${opt.options.map(o=>`<option value="${o}">${o}</option>`).join('')}
               </select>
             </div>`).join('')}
         </div>`:''}
-        <div class="row-3" style="margin-bottom:12px">
+        <div class="row-3 calc-inputs-section">
           ${def.inputs.map(inp=>`
             <div>
               <label>${inp.label}</label>
               <input type="number" id="calcInput_${inp.id}" value="${inp.default}" oninput="runCalcWidget()" />
             </div>`).join('')}
         </div>
-        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+        <div class="calc-section-divider">
           <div class="row-3">
             <div>
               <label>Avstand (km)</label>
@@ -1492,8 +1512,8 @@
             </div>
           </div>
         </div>
-        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
-          <div style="font-weight:800;font-size:12px;color:var(--muted);margin-bottom:10px">📅 Indirekte tid (timer)</div>
+        <div class="calc-section-divider">
+          <div class="calc-section-label">Indirekte tid (timer)</div>
           <div class="row-3">
             <div>
               <label>Rigg</label>
@@ -1508,7 +1528,7 @@
               <input type="number" id="calcCleanup" value="3" placeholder="3" oninput="runCalcWidget()" />
             </div>
           </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:6px">Blank = automatisk beregning</div>
+          <div class="footer-note" style="margin-top:6px">Blank = automatisk beregning</div>
         </div>`;
       window._calcDifficulty='normal';
       runCalcWidget();
@@ -1516,12 +1536,11 @@
 
     window.selectDifficulty=function(key){
       window._calcDifficulty=key;
-      // Update button styles
       Object.keys(difficultyFactors).forEach(k=>{
         const btn=document.getElementById('diffBtn_'+k);
         if(!btn) return;
-        btn.style.borderColor=k===key?'#0a84ff':'';
-        btn.style.background=k===key?'#eaf3ff':'';
+        if(k===key) btn.classList.add('active');
+        else btn.classList.remove('active');
       });
       runCalcWidget();
     };
@@ -1607,103 +1626,101 @@
 
       // Build results HTML
       resultsEl.innerHTML=`
-        <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:4px">
-          <div style="font-weight:800;font-size:14px;margin-bottom:4px">📊 Estimat — ${def.label} — ${result.areal}</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">${result.info||''}</div>
+        <div class="calc-result-card">
+          <div class="calc-result-header">Estimat — ${def.label} — ${result.areal}</div>
+          <div class="calc-result-sub">${result.info||''}</div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-            <div style="padding:10px;background:#f0f7ff;border-radius:10px">
-              <div style="font-size:11px;color:var(--muted);font-weight:700">⏱️ Direkte timer</div>
-              <div style="font-size:18px;font-weight:800;color:var(--blue);margin-top:4px">${directTimer}t</div>
-              <div style="font-size:10px;color:var(--muted);margin-top:4px">${baseTimer}t × ${diffFactor} × ${accessFactor} × ${heightFactor} × ${complexityFactor}</div>
+          <div class="calc-stat-grid">
+            <div class="calc-stat-box blue">
+              <div class="stat-label">Direkte timer</div>
+              <div class="stat-value">${directTimer}t</div>
+              <div class="stat-detail">${baseTimer}t x ${diffFactor}</div>
             </div>
-            <div style="padding:10px;background:#fff8f0;border-radius:10px">
-              <div style="font-size:11px;color:var(--muted);font-weight:700">📅 Indirekte timer</div>
-              <div style="font-size:18px;font-weight:800;color:#ea8c55;margin-top:4px">${indirectTimer}t</div>
-              <div style="font-size:10px;color:var(--muted);margin-top:4px">Rigg: ${rigTimer}t + Plan: ${planTimer}t + Kjøring: ${drivingTimer}t + Opprydding: ${cleanupTimer}t</div>
+            <div class="calc-stat-box orange">
+              <div class="stat-label">Indirekte timer</div>
+              <div class="stat-value">${indirectTimer}t</div>
+              <div class="stat-detail">Rigg: ${rigTimer}t + Plan: ${planTimer}t + Kjoring: ${drivingTimer}t + Opprydding: ${cleanupTimer}t</div>
             </div>
           </div>
 
-           <table style="margin-bottom:12px;width:100%;border-collapse:collapse;font-size:11px">
-            <thead><tr style="border-bottom:2px solid var(--line);background:#f8faff"><th style="text-align:left;padding:8px;font-weight:700">Materiale</th><th style="text-align:center;padding:8px;font-weight:700">Antall</th><th style="text-align:center;padding:8px;font-weight:700">Enhet</th><th style="text-align:right;padding:8px;font-weight:700">Pris</th><th style="text-align:center;padding:8px;font-weight:700">Svinn%</th><th style="text-align:center;padding:8px;font-weight:700">Påslag%</th><th style="text-align:right;padding:8px;font-weight:700">Total</th><th style="text-align:center;padding:8px"></th></tr></thead>
+          <table class="calc-mat-table">
+            <thead><tr><th>Materiale</th><th>Antall</th><th>Enhet</th><th>Pris</th><th>Svinn%</th><th>Paslag%</th><th style="text-align:right">Total</th><th></th></tr></thead>
             <tbody id="calcMaterialsTableBody">
               ${materialsWithPrices.map(m=>{
                 const p=getProject(currentProjectId);
                 const calcMarkup=(p?.settings?.materialMarkup)||20;
-                return `<tr style="border-bottom:1px solid #eef2ff" data-mat-id="${m.matId}">
-                  <td style="padding:8px;min-width:200px;position:relative">
-                    <input type="text" class="calcMatName" data-mat-id="${m.matId}" value="${escapeHtml(m.name||'')}" placeholder="Søk materiale..." style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:11px;cursor:pointer" onclick="openPriceSearchForCalc('${m.matId}')" readonly />
+                return `<tr data-mat-id="${m.matId}">
+                  <td>
+                    <input type="text" class="calcMatName mat-name-input" data-mat-id="${m.matId}" value="${escapeHtml(m.name||'')}" placeholder="Sok materiale..." onclick="openPriceSearchForCalc('${m.matId}')" readonly />
                   </td>
-                  <td style="text-align:center;padding:8px">
-                    <input type="number" class="calcMatQty" data-mat-id="${m.matId}" value="${(m.qty||0).toFixed(1)}" step="0.1" min="0" style="width:55px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:11px;text-align:right" onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
+                  <td style="text-align:center">
+                    <input type="number" class="calcMatQty mat-num-input" data-mat-id="${m.matId}" value="${(m.qty||0).toFixed(1)}" step="0.1" min="0" onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
                   </td>
-                  <td style="text-align:center;padding:8px">
-                    <select class="calcMatUnit" data-mat-id="${m.matId}" style="padding:6px;border:1px solid #ddd;border-radius:6px;font-size:11px;width:60px" onchange="recalcCalcMaterials()">
+                  <td style="text-align:center">
+                    <select class="calcMatUnit mat-unit-select" data-mat-id="${m.matId}" onchange="recalcCalcMaterials()">
                       ${['stk','lm','m2','m3','pk','rull','sett','kg','l'].map(u=>'<option value="'+u+'" '+(u===(m.unit||'stk')?'selected':'')+'> '+u+'</option>').join('')}
                     </select>
                   </td>
-                  <td style="text-align:right;padding:8px">
-                    <input type="number" class="calcMatCost" data-mat-id="${m.matId}" value="${(m.cost||0).toFixed(2)}" step="0.01" min="0" style="width:65px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:11px;text-align:right" onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
+                  <td style="text-align:right">
+                    <input type="number" class="calcMatCost mat-num-input" data-mat-id="${m.matId}" value="${(m.cost||0).toFixed(2)}" step="0.01" min="0" onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
                   </td>
-                  <td style="text-align:center;padding:8px">
-                    <input type="number" class="calcMatWaste" data-mat-id="${m.matId}" value="${m.waste||0}" step="1" min="0" max="100" style="width:50px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:11px;text-align:right" onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
+                  <td style="text-align:center">
+                    <input type="number" class="calcMatWaste mat-num-input" data-mat-id="${m.matId}" value="${m.waste||0}" step="1" min="0" max="100" style="width:50px" onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
                   </td>
-                  <td style="text-align:center;padding:8px">
-                    <input type="number" class="calcMatMarkup" data-mat-id="${m.matId}" value="${m.markup||calcMarkup}" step="1" min="0" style="width:50px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:11px;text-align:right" onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
+                  <td style="text-align:center">
+                    <input type="number" class="calcMatMarkup mat-num-input" data-mat-id="${m.matId}" value="${m.markup||calcMarkup}" step="1" min="0" style="width:50px" onchange="recalcCalcMaterials()" oninput="recalcCalcMaterials()" />
                   </td>
-                  <td style="text-align:right;padding:8px;font-weight:700;min-width:75px">
-                    <span class="calcMatRowTotal" data-mat-id="${m.matId}" style="color:#0a84ff">${currency(calcMatRowTotal(m))}</span>
+                  <td class="mat-total">
+                    <span class="calcMatRowTotal" data-mat-id="${m.matId}">${currency(calcMatRowTotal(m))}</span>
                   </td>
-                  <td style="text-align:center;padding:8px">
-                    <button class="btn small" style="padding:4px 8px;font-size:10px;background:#ffebee;color:#c62828;border:1px solid #ef5350;border-radius:4px;cursor:pointer" onclick="deleteCalcMaterial('${m.matId}')">✕</button>
+                  <td style="text-align:center">
+                    <button class="mat-delete" onclick="deleteCalcMaterial('${m.matId}')">&#10005;</button>
                   </td>
                 </tr>`
               }).join('')}
             </tbody>
           </table>
-          <div style="margin-bottom:12px">
-            <button class="btn secondary" style="width:100%;padding:10px;font-size:12px;background:#f0f7ff;border:1px dashed #0a84ff;cursor:pointer" onclick="addCalcMaterial()">➕ Legg til materiale</button>
+          <div style="margin-bottom:14px">
+            <button class="calc-add-mat-btn" onclick="addCalcMaterial()">+ Legg til materiale</button>
           </div>
 
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;padding:12px;background:#f5f8ff;border-radius:10px">
-            <div>
-              <div style="font-size:11px;color:var(--muted);font-weight:700">🔨 Arbeid (eks. mva)</div>
-              <div style="font-size:16px;font-weight:800;color:#0a84ff;margin-top:2px">${currency(laborSaleEx)}</div>
+          <div class="calc-price-grid">
+            <div class="calc-price-item">
+              <div class="price-label">Arbeid (eks. mva)</div>
+              <div class="price-value" style="color:var(--blue)">${currency(laborSaleEx)}</div>
             </div>
-            <div>
-              <div style="font-size:11px;color:var(--muted);font-weight:700">🪵 Materialer</div>
-              <div style="font-size:16px;font-weight:800;color:#167a42;margin-top:2px">${currency(totalMatCost)}</div>
+            <div class="calc-price-item">
+              <div class="price-label">Materialer</div>
+              <div class="price-value" style="color:#167a42">${currency(totalMatCost)}</div>
             </div>
-            <div>
-              <div style="font-size:11px;color:var(--muted);font-weight:700">💰 Totalt (eks. mva)</div>
-              <div style="font-size:16px;font-weight:800;color:#2e7d32;margin-top:2px">${currency(totalSaleEx)}</div>
-            </div>
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-            <div style="padding:10px;background:#f0fdf4;border:1px solid #b7e7bb;border-radius:10px">
-              <div style="font-size:11px;color:var(--muted);font-weight:700">⏱️ Totalt timer</div>
-              <div style="font-size:22px;font-weight:800;color:#2e7d32">${totalTimer}t</div>
-            </div>
-            <div style="padding:10px;background:#f0f7ff;border:1px solid #b7d7f0;border-radius:10px">
-              <div style="font-size:11px;color:var(--muted);font-weight:700">📊 Margin</div>
-              <div style="font-size:22px;font-weight:800;color:#0a84ff">${margin}%</div>
-              <div style="font-size:10px;color:var(--muted);margin-top:2px">Fortjeneste: ${currency(profit)}</div>
+            <div class="calc-price-item">
+              <div class="price-label">Totalt (eks. mva)</div>
+              <div class="price-value" style="color:#2e7d32">${currency(totalSaleEx)}</div>
             </div>
           </div>
 
-          <div style="display:flex;gap:8px">
+          <div class="calc-totals-grid">
+            <div class="calc-total-box green">
+              <div class="total-label">Totalt timer</div>
+              <div class="total-value">${totalTimer}t</div>
+            </div>
+            <div class="calc-total-box blue-border">
+              <div class="total-label">Margin</div>
+              <div class="total-value">${margin}%</div>
+              <div class="stat-detail" style="margin-top:2px">Fortjeneste: ${currency(profit)}</div>
+            </div>
+          </div>
+
+          <div class="calc-actions">
             ${window._lastCalcResult?.sentToOffer
-              ?`<button class="btn" style="flex:1;background:#e8f5e9;color:#2e7d32;border:1px solid #b7e7bb;cursor:not-allowed" disabled>✅ Sendt til tilbud</button>
-                <button class="btn secondary" style="flex:1" onclick="doAddCalcToMaterials()">➕ Legg i materialliste</button>`
-              :`<button class="btn primary" style="flex:1;background:#0a84ff" onclick="doSendCalcToOffer()">📤 Send til tilbud</button>
-                <button class="btn secondary" style="flex:1" onclick="doAddCalcToMaterials()">➕ Legg i materialliste</button>`
+              ?`<button class="btn success" disabled style="cursor:not-allowed">Sendt til tilbud</button>
+                <button class="btn secondary" onclick="doAddCalcToMaterials()">Legg i materialliste</button>`
+              :`<button class="btn primary" style="background:var(--blue)" onclick="doSendCalcToOffer()">Send til tilbud</button>
+                <button class="btn secondary" onclick="doAddCalcToMaterials()">Legg i materialliste</button>`
             }
           </div>
           ${window._lastCalcResult?.sentToOffer
-            ?`<div style="margin-top:8px;padding:10px;background:#e8f5e9;border:1px solid #b7e7bb;border-radius:8px;font-size:11px;color:#2e7d32;font-weight:700">
-               ✓ Denne kalkylen er sendt til tilbud. Endre inputfelt for å kunne sende en ny kalkyle.
-              </div>`
+            ?`<div class="calc-sent-msg">Denne kalkylen er sendt til tilbud. Endre inputfelt for a kunne sende en ny kalkyle.</div>`
             :''
           }
         </div>`;
@@ -1782,6 +1799,10 @@
       // Reset calc widget for next calculation (don't hide it)
       const jobSelect=document.getElementById('calcJobType');
       if(jobSelect) jobSelect.value='';
+      const jobSelectU=document.getElementById('calcJobTypeUtvendig');
+      if(jobSelectU) jobSelectU.value='';
+      const jobSelectI=document.getElementById('calcJobTypeInnvendig');
+      if(jobSelectI) jobSelectI.value='';
       const inputsEl=document.getElementById('calcInputs');
       if(inputsEl) inputsEl.innerHTML='';
       const resultsEl=document.getElementById('calcResults');

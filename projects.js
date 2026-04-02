@@ -199,49 +199,61 @@
       var rateDef=productionRates[op.type]||productionRates.annet;
       var result=calcOperationHours(op);
       var id=op.id;
-      return '<div class="op-row" data-opid="'+id+'" style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:'+(op.sentToOffer?'#f0fdf4':'#fff')+'">'
-        // Rad 1: type + mengde + materialer + slett
-        +'<div style="display:grid;grid-template-columns:1fr 80px auto auto auto;gap:8px;align-items:end;margin-bottom:8px">'
-          +'<div><label style="font-size:11px;color:var(--muted)">Jobbtype</label>'
+      // Build optgroups for operation type selector using subgroups
+      var typeOptions='';
+      utvendigSubgroups.forEach(function(g){
+        typeOptions+='<optgroup label="Utv: '+g.label+'">';
+        g.jobs.forEach(function(k){
+          var v=productionRates[k];
+          typeOptions+='<option value="'+k+'" '+(op.type===k?'selected':'')+'>'+(v?v.label:k)+'</option>';
+        });
+        typeOptions+='</optgroup>';
+      });
+      innvendigSubgroups.forEach(function(g){
+        typeOptions+='<optgroup label="Inn: '+g.label+'">';
+        g.jobs.forEach(function(k){
+          var v=productionRates[k];
+          typeOptions+='<option value="'+k+'" '+(op.type===k?'selected':'')+'>'+(v?v.label:k)+'</option>';
+        });
+        typeOptions+='</optgroup>';
+      });
+      return '<div class="op-row'+(op.sentToOffer?' sent':'')+'" data-opid="'+id+'">'
+        +'<div class="op-row-top">'
+          +'<div><label>Jobbtype</label>'
           +'<select data-field="type" onchange="updOperation(\''+id+'\',\'type\',this.value)">'
-          +Object.entries(productionRates).map(function([k,v]){
-            return '<option value="'+k+'" '+(op.type===k?'selected':'')+'>'+v.label+'</option>';
-          }).join('')
+          +typeOptions
           +'</select></div>'
-          +'<div><label style="font-size:11px;color:var(--muted)">'+rateDef.unit+'</label>'
+          +'<div><label>'+rateDef.unit+'</label>'
           +'<input type="number" data-field="mengde" value="'+(op.mengde||'')+'" placeholder="0" oninput="updOperation(\''+id+'\',\'mengde\',this.value)" /></div>'
-          +'<button class="btn small secondary" onclick="toggleOpMaterials(\''+id+'\')" style="margin-bottom:2px">🛠️ Mat</button>'
-          +(op.sentToOffer?'<span style="padding:6px 10px;background:#d1fae5;color:#065f46;border-radius:6px;font-size:11px;font-weight:700;margin-bottom:2px;white-space:nowrap">✓ Sendt</span>':'<button class="btn small danger" onclick="removeOperation(\''+id+'\')" style="margin-bottom:2px">Slett</button>')
+          +'<button class="btn small secondary" onclick="toggleOpMaterials(\''+id+'\')" style="align-self:end;margin-bottom:1px">Mat</button>'
+          +(op.sentToOffer?'<span class="op-sent-badge" style="align-self:end;margin-bottom:1px">Sendt</span>':'<button class="btn small danger" onclick="removeOperation(\''+id+'\')" style="align-self:end;margin-bottom:1px">Slett</button>')
         +'</div>'
-        // Rad 2: level + tilkomst + hoyde + kompleksitet
-        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">'
-          +'<div><label style="font-size:11px;color:var(--muted)">Produksjonstakt</label>'
+        +'<div class="op-row-factors">'
+          +'<div><label>Produksjonstakt</label>'
           +'<select data-field="level" onchange="updOperation(\''+id+'\',\'level\',this.value)">'
           +'<option value="low" '+(op.level==='low'?'selected':'')+'>Lav ('+rateDef.low+' t/'+rateDef.unit+')</option>'
           +'<option value="normal" '+((op.level||'normal')==='normal'?'selected':'')+'>Normal ('+rateDef.normal+' t/'+rateDef.unit+')</option>'
           +'<option value="high" '+(op.level==='high'?'selected':'')+'>Hoy ('+rateDef.high+' t/'+rateDef.unit+')</option>'
           +'</select></div>'
-          +'<div><label style="font-size:11px;color:var(--muted)">Tilkomst</label>'
+          +'<div><label>Tilkomst</label>'
           +'<select data-field="tilkomst" onchange="updOperation(\''+id+'\',\'tilkomst\',this.value)">'
           +opSelectHtml(op.tilkomst||'normal',accessFactors)
           +'</select></div>'
-          +'<div><label style="font-size:11px;color:var(--muted)">Hoyde</label>'
+          +'<div><label>Hoyde</label>'
           +'<select data-field="hoyde" onchange="updOperation(\''+id+'\',\'hoyde\',this.value)">'
           +opSelectHtml(op.hoyde||'bakke',heightFactors)
           +'</select></div>'
-          +'<div><label style="font-size:11px;color:var(--muted)">Kompleksitet</label>'
+          +'<div><label>Kompleksitet</label>'
           +'<select data-field="kompleksitet" onchange="updOperation(\''+id+'\',\'kompleksitet\',this.value)">'
           +opSelectHtml(op.kompleksitet||'normal',complexityFactors)
           +'</select></div>'
         +'</div>'
-        // Rad 3: resultat for denne raden
-        +'<div class="op-result" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:8px 12px;background:#f0f7ff;border-radius:10px">'
-          +'<span style="font-size:12px;color:var(--muted)">Basis: '+result.baseTimer+'t'
+        +'<div class="op-result">'
+          +'<span class="op-basis">Basis: '+result.baseTimer+'t'
           +(result.faktorer.samlet!==1?' | Faktor: x'+result.faktorer.samlet:'')+'</span>'
-          +'<span style="font-size:15px;font-weight:800;color:var(--blue)">'+result.faktorTimer+' timer</span>'
+          +'<span class="op-hours">'+result.faktorTimer+' timer</span>'
         +'</div>'
-        // Material-panel (skjult per default)
-        +'<div id="op-materials-'+id+'" class="op-materials-panel" style="display:none;margin-top:8px;padding:8px 12px;background:#f9fbff;border:1px solid #dce8ff;border-radius:10px">'
+        +'<div id="op-materials-'+id+'" class="op-materials-panel" style="display:none;margin-top:10px;padding:10px 14px;background:#f9fbff;border:1px solid #dce8ff;border-radius:12px">'
           +renderOpMaterials(op, id)
         +'</div>'
       +'</div>';
@@ -249,24 +261,24 @@
 
     function renderIndirectInputs(p){
       var ind=p.indirect||{};
-      return '<div style="margin-top:12px;padding:12px;background:#fffbf0;border:1px solid #fde68a;border-radius:14px">'
-        +'<div style="font-size:13px;font-weight:800;color:var(--muted);margin-bottom:8px">Prosjektforhold (indirekte tid)</div>'
-        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">'
-          +'<div><label style="font-size:11px;color:var(--muted)">Avstand (km en vei)</label>'
+      return '<div class="indirect-panel">'
+        +'<div class="calc-section-label">Prosjektforhold (indirekte tid)</div>'
+        +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">'
+          +'<div><label>Avstand (km)</label>'
           +'<input type="number" value="'+(ind.avstandKm||'')+'" placeholder="0" oninput="updIndirect(\'avstandKm\',this.value)" /></div>'
-          +'<div><label style="font-size:11px;color:var(--muted)">Antall dager</label>'
+          +'<div><label>Antall dager</label>'
           +'<input type="number" value="'+(ind.antallDager||'')+'" placeholder="Auto" oninput="updIndirect(\'antallDager\',this.value)" /></div>'
-          +'<div><label style="font-size:11px;color:var(--muted)">Antall turer</label>'
+          +'<div><label>Antall turer</label>'
           +'<input type="number" value="'+(ind.antallTurer||'')+'" placeholder="Auto" oninput="updIndirect(\'antallTurer\',this.value)" /></div>'
-          +'<div><label style="font-size:11px;color:var(--muted)">Personer</label>'
+          +'<div><label>Personer</label>'
           +'<input type="number" value="'+(ind.people||1)+'" placeholder="1" oninput="updIndirect(\'people\',this.value)" /></div>'
         +'</div>'
-        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">'
-          +'<div><label style="font-size:11px;color:var(--muted)">Rigg (timer, blank=auto)</label>'
+        +'<div class="row-3" style="margin-top:10px">'
+          +'<div><label>Rigg (timer, blank=auto)</label>'
           +'<input type="number" value="'+(ind.riggTimer!=null?ind.riggTimer:'')+'" placeholder="Auto" oninput="updIndirect(\'riggTimer\',this.value)" /></div>'
-          +'<div><label style="font-size:11px;color:var(--muted)">Planlegging (timer, blank=auto)</label>'
+          +'<div><label>Planlegging (timer, blank=auto)</label>'
           +'<input type="number" value="'+(ind.planTimer!=null?ind.planTimer:'')+'" placeholder="Auto" oninput="updIndirect(\'planTimer\',this.value)" /></div>'
-          +'<div><label style="font-size:11px;color:var(--muted)">Opprydding %</label>'
+          +'<div><label>Opprydding %</label>'
           +'<input type="number" value="'+(ind.oppryddingPct!=null?ind.oppryddingPct:3)+'" placeholder="3" oninput="updIndirect(\'oppryddingPct\',this.value)" /></div>'
         +'</div>'
       +'</div>';
@@ -605,47 +617,67 @@
 
         <!-- KALKULATOR (MAIN) -->
         <div class="card" style="background:#fafcff;border:1px solid var(--line);box-shadow:none;margin-bottom:14px">
-          <div class="section-head">
-            <div class="section-title">📐 Time & Material Kalkulator</div>
-            <span style="font-size:11px;color:#0a84ff;font-weight:700;margin-left:auto">← Eneste kalkylesystem</span>
+          <div class="calc-widget-header">
+            <div class="section-title">Time & Material Kalkulator</div>
+            <button class="btn small secondary" onclick="toggleRateSettings()">Mine erfaringstimer</button>
           </div>
-          <div style="padding:10px 14px;background:#eaf3ff;border-radius:10px;margin-bottom:12px;font-size:12px;color:#0a5fa8">
-            💡 <strong>Bruk denne kalkulatoren for å estimere arbeid:</strong> Velg jobbtype, fyll inn mål, få materialer og pris automatisk, deretter send til tilbud.
+          <div class="calc-info-tip">
+            <span>Velg jobbtype, fyll inn mal, fa materialer og pris automatisk, deretter send til tilbud.</span>
           </div>
           <div id="calcWidget">
-            <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-              <button class="btn small secondary" onclick="document.getElementById('calcRateSettings').classList.toggle('hidden')">⚙️ Mine erfaringstimer</button>
+            <div class="calc-job-grid">
+              <div class="calc-job-col">
+                <label>Utvendig arbeid</label>
+                <select id="calcJobTypeUtvendig" onchange="selectCalcJobCategory('utvendig', this.value)">
+                  <option value="">-- Velg utvendig jobb --</option>
+                  ${utvendigSubgroups.map(g =>
+                    '<optgroup label="'+g.label+'">'
+                    +g.jobs.map(k => {
+                      const r = productionRates[k];
+                      return '<option value="'+k+'">'+(r ? r.label : k)+'</option>';
+                    }).join('')
+                    +'</optgroup>'
+                  ).join('')}
+                </select>
+              </div>
+              <div class="calc-job-col">
+                <label>Innvendig arbeid</label>
+                <select id="calcJobTypeInnvendig" onchange="selectCalcJobCategory('innvendig', this.value)">
+                  <option value="">-- Velg innvendig jobb --</option>
+                  ${innvendigSubgroups.map(g =>
+                    '<optgroup label="'+g.label+'">'
+                    +g.jobs.map(k => {
+                      const r = productionRates[k];
+                      return '<option value="'+k+'">'+(r ? r.label : k)+'</option>';
+                    }).join('')
+                    +'</optgroup>'
+                  ).join('')}
+                </select>
+              </div>
             </div>
-            <div style="margin-bottom:12px">
-              <label>Velg jobbtype</label>
-              <select id="calcJobType" onchange="updateCalcWidget()">
-                <option value="">-- Velg --</option>
-                <option value="terrasse">Terrasse</option>
-                <option value="kledning">Kledning</option>
-                <option value="tak">Tak</option>
-                <option value="lettvegg">Lettvegg</option>
-                <option value="etterisolering">Etterisolering</option>
-                <option value="vindu">Vindu</option>
-                <option value="gulv">Gulvlegging</option>
-                <option value="panel">Innvendig panel</option>
-                <option value="dor">Dørmontering</option>
-                <option value="trapp">Trapp</option>
-                <option value="bad">Bad / våtrom</option>
-              </select>
-            </div>
+            <input type="hidden" id="calcJobType" />
             <div id="calcInputs"></div>
             <div id="calcResults"></div>
-            <div id="calcRateSettings" class="hidden" style="margin-top:14px;padding:14px;background:#fffbea;border:1px solid #fde68a;border-radius:14px">
-              <div style="font-weight:800;font-size:13px;margin-bottom:10px">⚙️ Mine egne erfaringstimer (t/m² eller t/stk)</div>
-              <div class="row-3">
-                ${Object.entries(calcDefaults).map(([k,v])=>`
-                  <div>
-                    <label>${k.charAt(0).toUpperCase()+k.slice(1)} (${v.label})</label>
-                    <input type="number" step="0.1" value="${(state.calcRates||{})[k]??v.tPerM2}"
-                      onchange="saveCalcRate('${k}',this.value);saveState();if(window.runCalcWidget)runCalcWidget()" />
-                  </div>`).join('')}
-              </div>
-              <div class="footer-note">Standard: Terrasse 2,5 • Kledning 1,3 • Tak 1,8 • Lettvegg 1,0 • Etterisolering 0,9 • Vindu 4,0 t/stk</div>
+            <div id="calcRateSettings" class="hidden rate-settings-panel">
+              <div class="rate-settings-header">Mine egne erfaringstimer (t/m2 eller t/stk)</div>
+              ${rateSettingsGroups.map((group,gi) => `
+                <div class="rate-section">
+                  <div class="rate-section-toggle" onclick="toggleRateSection(this)" aria-expanded="false" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRateSection(this)}">
+                    <span>${group.label}</span>
+                    <span class="rate-toggle-icon">&#9654;</span>
+                  </div>
+                  <div class="rate-section-body" id="rateGroup_${gi}">
+                    <div class="row-3">
+                      ${group.keys.map(k => {
+                        const v = calcDefaults[k];
+                        if(!v) return '';
+                        const rateLabel = (productionRates[k]||{}).label || k;
+                        return '<div><label>'+rateLabel+' ('+v.label+')</label><input type="number" step="0.1" value="'+((state.calcRates||{})[k]!=null?(state.calcRates||{})[k]:v.tPerM2)+'" onchange="saveCalcRate(\''+k+'\',this.value);saveState();if(window.runCalcWidget)runCalcWidget()" /></div>';
+                      }).join('')}
+                    </div>
+                  </div>
+                </div>`).join('')}
+              <div class="footer-note" style="margin-top:8px">Endre verdiene over for a justere timesatser basert pa din erfaring</div>
             </div>
           </div>
         </div>
