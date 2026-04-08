@@ -1,0 +1,75 @@
+{
+  "calculator": "gavlCalc.js",
+  "function": "beregnGavlStendere",
+  "source": "https://www.blocklayer.com/gable-studs",
+  "verified": "2026-04-05",
+  "snapshots": [
+    {
+      "navn": "30° centre 1plate 5000mm",
+      "input": { "angleDeg": 30, "startHeight": 2400, "lengthLevel": 5000 },
+      "stendere": [
+        { "nr": 1,  "lengdeLangside": 2324, "runLevel": 24,   "runAngle": 27 },
+        { "nr": 2,  "lengdeLangside": 2671, "runLevel": 624,  "runAngle": 720 },
+        { "nr": 3,  "lengdeLangside": 3017, "runLevel": 1224, "runAngle": 1413 },
+        { "nr": 4,  "lengdeLangside": 3364, "runLevel": 1824, "runAngle": 2106 },
+        { "nr": 5,  "lengdeLangside": 3710, "runLevel": 2424, "runAngle": 2799 },
+        { "nr": 6,  "lengdeLangside": 4056, "runLevel": 3024, "runAngle": 3492 },
+        { "nr": 7,  "lengdeLangside": 4403, "runLevel": 3624, "runAngle": 4184 },
+        { "nr": 8,  "lengdeLangside": 4749, "runLevel": 4224, "runAngle": 4877 },
+        { "nr": 9,  "lengdeLangside": 5096, "runLevel": 4824, "runAngle": 5570 },
+        { "nr": 10, "lengdeLangside": 5183, "runLevel": 4976, "runAngle": 5746 }
+      ]
+    },
+    {
+      "navn": "45° centre 1plate 5000mm",
+      "input": { "angleDeg": 45, "startHeight": 2400, "lengthLevel": 5000 },
+      "stendere": [
+        { "nr": 1,  "lengdeLangside": 2332, "runLevel": 24,   "runAngle": 34 },
+        { "nr": 2,  "lengdeLangside": 2932, "runLevel": 624,  "runAngle": 882 },
+        { "nr": 3,  "lengdeLangside": 3532, "runLevel": 1224, "runAngle": 1731 },
+        { "nr": 4,  "lengdeLangside": 4132, "runLevel": 1824, "runAngle": 2579 },
+        { "nr": 5,  "lengdeLangside": 4732, "runLevel": 2424, "runAngle": 3428 },
+        { "nr": 6,  "lengdeLangside": 5332, "runLevel": 3024, "runAngle": 4277 },
+        { "nr": 7,  "lengdeLangside": 5932, "runLevel": 3624, "runAngle": 5125 },
+        { "nr": 8,  "lengdeLangside": 6532, "runLevel": 4224, "runAngle": 5974 },
+        { "nr": 9,  "lengdeLangside": 7132, "runLevel": 4824, "runAngle": 6822 },
+        { "nr": 10, "lengdeLangside": 7284, "runLevel": 4976, "runAngle": 7037 }
+      ]
+    },
+    {
+      "navn": "30° near 2plates 5000mm",
+      "input": { "angleDeg": 30, "startHeight": 2400, "lengthLevel": 5000, "topPlateCount": 2, "measurePoint": "near" },
+      "stendere": [
+        { "nr": 1,  "lengdeLangside": 2269, "runLevel": 0,    "runAngle": 0 },
+        { "nr": 2,  "lengdeLangside": 2615, "runLevel": 600,  "runAngle": 693 },
+        { "nr": 3,  "lengdeLangside": 2962, "runLevel": 1200, "runAngle": 1386 },
+        { "nr": 4,  "lengdeLangside": 3308, "runLevel": 1800, "runAngle": 2079 },
+        { "nr": 5,  "lengdeLangside": 3655, "runLevel": 2400, "runAngle": 2772 },
+        { "nr": 6,  "lengdeLangside": 4001, "runLevel": 3000, "runAngle": 3465 },
+        { "nr": 7,  "lengdeLangside": 4347, "runLevel": 3600, "runAngle": 4157 },
+        { "nr": 8,  "lengdeLangside": 4694, "runLevel": 4200, "runAngle": 4850 },
+        { "nr": 9,  "lengdeLangside": 5040, "runLevel": 4800, "runAngle": 5543 },
+        { "nr": 10, "lengdeLangside": 5128, "runLevel": 4952, "runAngle": 5719 }
+      ]
+    },
+    {
+      "navn": "10° near 2plates 4800mm (BL-verifisert)",
+      "input": {
+        "angleDeg": 10, "startHeight": 2400, "lengthLevel": 4800,
+        "spacing": 600, "studWidth": 48, "plateThick": 13,
+        "topPlateCount": 2, "measurePoint": "near", "startIn": 0
+      },
+      "stendere": [
+        { "nr": 1, "lengdeLangside": 2369, "runLevel": 0,    "runAngle": 0 },
+        { "nr": 2, "lengdeLangside": 2475, "runLevel": 600,  "runAngle": 609 },
+        { "nr": 3, "lengdeLangside": 2581, "runLevel": 1200, "runAngle": 1218 },
+        { "nr": 4, "lengdeLangside": 2686, "runLevel": 1800, "runAngle": 1828 },
+        { "nr": 5, "lengdeLangside": 2792, "runLevel": 2400, "runAngle": 2437 },
+        { "nr": 6, "lengdeLangside": 2898, "runLevel": 3000, "runAngle": 3046 },
+        { "nr": 7, "lengdeLangside": 3004, "runLevel": 3600, "runAngle": 3655 },
+        { "nr": 8, "lengdeLangside": 3110, "runLevel": 4200, "runAngle": 4265 },
+        { "nr": 9, "lengdeLangside": 3207, "runLevel": 4752, "runAngle": 4825 }
+      ]
+    }
+  ]
+}
