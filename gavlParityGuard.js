@@ -156,7 +156,7 @@ if (typeof window !== 'undefined' && typeof beregnGavlStendere === 'function') {
   if (window.location.search.indexOf('debug') !== -1) {
     var _pgResult = gavlParityGuard();
     if (_pgResult.ok) {
-      console.log('%c GAVL PARITY GUARD: 3/3 OK ', 'background:#3A8A50;color:#fff;border-radius:3px');
+      console.log('%c GAVL PARITY GUARD: ' + GAVL_PARITY_SNAPSHOTS.length + '/' + GAVL_PARITY_SNAPSHOTS.length + ' OK ', 'background:#3A8A50;color:#fff;border-radius:3px');
     } else {
       console.error('GAVL PARITY GUARD FAILED:', _pgResult.failures);
     }

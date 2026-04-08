@@ -513,12 +513,12 @@ function renderKledningTool() {
     + '<p style="color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:20px">Her er en visuell forklaring av de viktigste m\u00e5lene og begrepene brukt i t\u00f8mmermannskledning.</p>'
     + '<div style="display:grid;gap:16px">'
     + '<div style="text-align:center">'
-    + '<img src="img/kledning-info-1.jpg" style="width:100%;border-radius:var(--radius-xs);background:var(--bg-warm)" alt="M\u00e5l og oppbygging" />'
-    + '<p style="font-size:12px;color:var(--muted);margin-top:8px;margin-bottom:0">M\u00e5l og oppbygging</p>'
+    + '<img src="img/tømmermannskledning/dekningsmal.png" style="width:100%;border-radius:var(--radius-xs);background:var(--bg-warm)" alt="Dekningsm\u00e5l" />'
+    + '<p style="font-size:12px;color:var(--muted);margin-top:8px;margin-bottom:0">Dekningsm\u00e5l</p>'
     + '</div>'
     + '<div style="text-align:center">'
-    + '<img src="img/kledning-info-2.jpg" style="width:100%;border-radius:var(--radius-xs);background:var(--bg-warm)" alt="Begreper og plassering" />'
-    + '<p style="font-size:12px;color:var(--muted);margin-top:8px;margin-bottom:0">Begreper og plassering</p>'
+    + '<img src="img/tømmermannskledning/feltlengde.png" style="width:100%;border-radius:var(--radius-xs);background:var(--bg-warm)" alt="Feltlengde" />'
+    + '<p style="font-size:12px;color:var(--muted);margin-top:8px;margin-bottom:0">Feltlengde</p>'
     + '</div>'
     + '</div>'
     + '<button onclick="closeKledningInfoModal()" style="width:100%;padding:12px;margin-top:20px;background:var(--accent-soft);border:1.5px solid var(--line);border-radius:var(--radius-xs);font-weight:700;color:var(--accent-hover);cursor:pointer;font-size:14px;transition:all var(--dur-normal) var(--ease)">Lukk</button>'
@@ -2067,7 +2067,7 @@ function renderKledningTool() {
       var cls = 'gc-summary-item' + (isAccent ? ' gc-summary-accent' : '');
       return '<div class="' + cls + '">'
         + '<span class="gc-summary-label">' + label + '</span>'
-        + '<span class="gc-summary-value">' + value + ' <span class="mc-result-unit">' + unit + '</span></span>'
+        + '<span class="gc-summary-value">' + value + ' <span class="gc-unit">' + unit + '</span></span>'
         + '</div>';
     }
 
@@ -2148,28 +2148,15 @@ function renderKledningTool() {
         v[f.id] = f.type === 'checkbox' ? el.checked : el.value;
       });
 
-      var angleDeg = Number(v.angleDeg) || 0;
-      var startHeight = Number(v.startHeight) || 0;
       var container = document.getElementById('gavlResultat');
       if (!container) return;
 
-      if (angleDeg <= 0 || startHeight <= 0) {
+      if (!(Number(v.angleDeg) > 0) || !(Number(v.startHeight) > 0)) {
         container.innerHTML = '<div style="padding:24px;text-align:center;background:var(--bg-warm);border:1px dashed var(--line);border-radius:12px;font-size:13px;color:var(--muted);font-weight:600">Fyll inn takvinkel og starthøyde</div>';
         return;
       }
 
-      var res = beregnGavlStendere({
-        angleDeg: angleDeg,
-        startHeight: startHeight,
-        lengthLevel: Number(v.lengthLevel) || 5000,
-        spacing: Number(v.spacing) || 600,
-        studWidth: Number(v.studWidth) || 48,
-        plateThick: Number(v.plateThick) || 48,
-        topPlateCount: Number(v.topPlateCount) === 2 ? 2 : 1,
-        measurePoint: v.measurePoint || 'centre',
-        alignSheets: !!v.alignSheets,
-        startMode: v.startMode || 'single'
-      });
+      var res = beregnGavlStendere(v);
 
       if (!res.gyldig) {
         container.innerHTML = '<div style="padding:24px;text-align:center;background:var(--bg-warm);border:1px dashed var(--line);border-radius:12px;font-size:13px;color:var(--muted);font-weight:600">Ugyldig input</div>';
@@ -2201,7 +2188,7 @@ function renderKledningTool() {
 
       // Stendertabell
       html += '<div class="gc-table-wrap"><table class="gc-table">';
-      html += '<thead><tr><th>Nr</th><th class="gc-th-r">Langside (mm)</th><th class="gc-th-r">Kortside (mm)</th><th class="gc-th-r">Oppmerking (mm)</th><th class="gc-th-r">Langs toppsvill (mm)</th></tr></thead>';
+      html += '<thead><tr><th>Nr</th><th class="gc-th-r">Lang</th><th class="gc-th-r">Kort</th><th class="gc-th-r">Oppm.</th><th class="gc-th-r">Toppsvill</th></tr></thead>';
       html += '<tbody>';
       var last = res.stendere.length - 1;
       res.stendere.forEach(function(st, i) {

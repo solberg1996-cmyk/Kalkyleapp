@@ -1102,15 +1102,16 @@
     .gc-summary-accent .gc-summary-value{color:var(--accent)}
     .gc-summary-label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
     .gc-summary-value{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-.01em}
+    .gc-unit{font-size:12px;font-weight:600;color:var(--muted)}
     .gc-actions{display:flex;justify-content:flex-end;margin-bottom:8px}
     .gc-copy-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:var(--radius-xs);cursor:pointer;transition:border-color var(--dur-normal) var(--ease),color var(--dur-normal) var(--ease)}
     .gc-copy-btn:hover{border-color:var(--accent);color:var(--text)}
     .gc-copy-btn--done{border-color:#34D399;color:#34D399}
     .gc-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:12px}
     .gc-table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
-    .gc-table th{text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:8px 10px;border-bottom:2px solid var(--line);white-space:nowrap}
+    .gc-table th{text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:8px 6px;border-bottom:2px solid var(--line)}
     .gc-th-r,.gc-td-r{text-align:right}
-    .gc-table td{padding:7px 10px;border-bottom:1px solid var(--line);color:var(--text)}
+    .gc-table td{padding:7px 6px;border-bottom:1px solid var(--line);color:var(--text)}
     .gc-table tbody tr:last-child td{border-bottom:none}
     .gc-table tbody tr:hover{background:var(--bg-warm)}
     .gc-row-first td{background:var(--accent-soft)}
@@ -1126,8 +1127,8 @@
       .gc-summary-label{font-size:10px}
       .gc-summary-value{font-size:16px}
       .gc-table{font-size:12px}
-      .gc-table th{padding:6px 8px;font-size:10px}
-      .gc-table td{padding:6px 8px}
+      .gc-table th{padding:6px 4px;font-size:10px}
+      .gc-table td{padding:6px 4px}
       .gc-len{font-size:12px}
       .gc-copy-btn{padding:8px 14px;font-size:13px;min-height:44px}
     }
