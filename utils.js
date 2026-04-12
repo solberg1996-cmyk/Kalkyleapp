@@ -53,6 +53,7 @@
           const p=JSON.parse(raw);
           return {customers:p.customers||[], projects:p.projects||[], settings:{...defaultSettings,...(p.settings||{})},
             priceCatalog:p.priceCatalog||[], priceFileName:p.priceFileName||'',
+            manualPriceCatalog:p.manualPriceCatalog||[],
             favoriteCatalogIds:p.favoriteCatalogIds||[], recentCatalogIds:p.recentCatalogIds||[],
             userTemplates:p.userTemplates||[],calcRates:p.calcRates||{},laborRates:p.laborRates||{},calcRecipes:p.calcRecipes||{},
             company:{...defaultCompany,...(p.company||{})}};
@@ -60,7 +61,7 @@
         state.projects.forEach(pr=>{ if(pr.extras && pr.extras.subcontractor>0 && !pr.extras.subcontractors){ pr.extras.subcontractors=[{id:uid(),trade:'Underentreprenør',amount:pr.extras.subcontractor}]; } pr.extras.subcontractors=pr.extras.subcontractors||[]; });
         }
       }catch(e){}
-      return {customers:[],projects:[],settings:{...defaultSettings},priceCatalog:[],priceFileName:'',favoriteCatalogIds:[],recentCatalogIds:[],userTemplates:[],calcRates:{},laborRates:{},calcRecipes:{}};
+      return {customers:[],projects:[],settings:{...defaultSettings},priceCatalog:[],priceFileName:'',manualPriceCatalog:[],favoriteCatalogIds:[],recentCatalogIds:[],userTemplates:[],calcRates:{},laborRates:{},calcRecipes:{}};
     }
 
     let state = loadState();
@@ -82,6 +83,14 @@
       const cleaned = String(value).replace(/\./g,'').replace(',','.').replace(/[^0-9.-]/g,'');
       const n = Number(cleaned);
       return isNaN(n) ? 0 : n;
+    }
+
+    // Returns CSV priceCatalog merged with manualPriceCatalog.
+    // Manual entries appended last — consumers loop both together.
+    function getMergedCatalog(){
+      const csv = state.priceCatalog || [];
+      const manual = state.manualPriceCatalog || [];
+      return csv.concat(manual);
     }
 
     function saveState(){

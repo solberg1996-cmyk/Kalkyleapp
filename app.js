@@ -72,14 +72,15 @@
     function getAllTemplates(){ return [...builtinTemplates, ...(state.userTemplates||[])]; }
 
     function lookupPriceForMaterial(name){
-      if(!state.priceCatalog||!state.priceCatalog.length) return 0;
+      const catalog = getMergedCatalog();
+      if(!catalog.length) return 0;
       const q = (name||'').toLowerCase().trim();
       if(!q) return 0;
-      let match = state.priceCatalog.find(item =>
+      let match = catalog.find(item =>
         (item.productName||item.name||'').toLowerCase()===q || (item.name||'').toLowerCase()===q
       );
       if(!match){
-        match = state.priceCatalog.find(item =>
+        match = catalog.find(item =>
           (item.productName||item.name||'').toLowerCase().includes(q) ||
           q.includes((item.productName||item.name||'').toLowerCase().substring(0,8))
         );
@@ -195,22 +196,35 @@
       if(!resultsDiv) return;
 
       const results=searchPriceCatalog(query).slice(0,30);
-      if(!query.trim() || !results.length){
-        resultsDiv.innerHTML=query.trim()?'<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px">Ingen treff</div>':'<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px">Skriv for å søke</div>';
+      if(!query.trim()){
+        resultsDiv.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px">Skriv for å søke</div>';
+        window._calcMatSearchActive=0;
+        return;
+      }
+      if(!results.length){
+        resultsDiv.innerHTML='<div style="padding:20px;text-align:center">'
+          +'<div style="color:var(--muted);font-size:12px;margin-bottom:10px">Ingen treff på "'+escapeHtml(query)+'"</div>'
+          +'<button class="btn small primary" onclick="openManualPriceModal(null,\''+escapeAttr(query)+'\')">+ Legg til som manuell pris</button>'
+          +'</div>';
         window._calcMatSearchActive=0;
         return;
       }
 
-      resultsDiv.innerHTML=results.map((item,idx)=>`
+      resultsDiv.innerHTML=results.map((item,idx)=>{
+        const isManual = item.source === 'manual';
+        const badge = isManual
+          ? '<span style="background:var(--blue);color:#0F0E0C;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:0.04em;margin-left:6px">Manuell</span>'
+          : '';
+        return `
         <div class="calcMatSearchItem" data-idx="${idx}" style="padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer;transition:background 0.1s" onmousemove="calcMatMouseMove(event,${idx})" onclick="selectCalcMatFromModal('${escapeHtml(item.id)}')">
-          <div style="font-weight:700;color:var(--text);margin-bottom:4px;font-size:12px">${escapeHtml(item.productName||item.name)}</div>
+          <div style="font-weight:700;color:var(--text);margin-bottom:4px;font-size:12px;display:flex;align-items:center">${escapeHtml(item.productName||item.name)}${badge}</div>
           <div style="font-size:11px;color:var(--muted);display:flex;gap:16px;align-items:center">
             <span>${escapeHtml(item.unit||'stk')}</span>
             <span style="color:var(--accent);font-weight:600">${currency(item.userPrice||0)}</span>
             ${item.itemNo?'<button class="copy-artnr-btn" onclick="copyCalcItemNo(\''+escapeHtml(item.itemNo)+'\',this);event.stopPropagation()">'+escapeHtml(item.itemNo)+' <span class="copy-artnr-label">Kopier</span></button>':''}
           </div>
         </div>
-      `).join('');
+      `;}).join('');
       if(typeof window._calcMatSearchActive!=='number'){
         window._calcMatSearchActive=0;
       }
@@ -757,6 +771,157 @@
 
     function clearPriceCatalog(){ state.priceCatalog=[]; state.priceFileName=''; saveState(); renderProjectView(); }
 
+    // ── Manuelle priser — CRUD ────────────────────────────────
+    // Lagres i state.manualPriceCatalog, syncer via saveState().
+    // Hver oppføring: {id, itemNo, name, productName, description, userPrice, unit, source:'manual'}
+
+    const MANUAL_UNIT_OPTIONS = ['stk','m','lm','m²','m³','kg','pakke','rull','sekk','jobb'];
+
+    window.openManualPriceModal = function(id, prefillName){
+      state.manualPriceCatalog = state.manualPriceCatalog || [];
+      const existing = id ? state.manualPriceCatalog.find(x=>x.id===id) : null;
+      const isEdit = !!existing;
+
+      let modal = document.getElementById('manualPriceModal');
+      if(!modal){
+        modal = document.createElement('div');
+        modal.id = 'manualPriceModal';
+        modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:480px;max-width:95vw;max-height:90vh;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:2000;display:flex;flex-direction:column;overflow-y:auto';
+        document.body.appendChild(modal);
+      }
+      let backdrop = document.getElementById('manualPriceBackdrop');
+      if(!backdrop){
+        backdrop = document.createElement('div');
+        backdrop.id = 'manualPriceBackdrop';
+        backdrop.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:1999;cursor:pointer';
+        backdrop.addEventListener('click', e => { if(e.target===backdrop) closeManualPriceModal(); });
+        document.body.appendChild(backdrop);
+      }
+      backdrop.style.display = 'block';
+
+      const currentUnit = existing ? existing.unit : 'stk';
+      const unitInList = MANUAL_UNIT_OPTIONS.includes(currentUnit);
+      const unitOpts = MANUAL_UNIT_OPTIONS.map(u =>
+        `<option value="${u}"${currentUnit===u?' selected':''}>${u}</option>`
+      ).join('') + `<option value="__other"${!unitInList?' selected':''}>Annet…</option>`;
+
+      const prefillVal = prefillName ? escapeAttr(prefillName) : '';
+      const nameVal = existing ? escapeAttr(existing.name||existing.productName||'') : prefillVal;
+      const descVal = existing ? escapeAttr(existing.description||'') : '';
+      const itemNoVal = existing ? escapeAttr(existing.itemNo||'') : '';
+      const priceVal = existing ? (existing.userPrice||0) : '';
+      const customUnit = !unitInList ? escapeAttr(currentUnit||'') : '';
+
+      modal.innerHTML = `
+        <div style="padding:18px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:16px;font-weight:700">${isEdit?'Rediger':'Legg til'} manuell pris</div>
+          <button onclick="closeManualPriceModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);padding:0;width:28px;height:28px">×</button>
+        </div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Navn *</label>
+            <input id="manualPriceName" type="text" value="${nameVal}" placeholder="f.eks. Gipsplate 13mm" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font-size:14px;box-sizing:border-box" />
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Beskrivelse</label>
+            <input id="manualPriceDesc" type="text" value="${descVal}" placeholder="Valgfri" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font-size:14px;box-sizing:border-box" />
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Artikkelnr</label>
+            <input id="manualPriceItemNo" type="text" value="${itemNoVal}" placeholder="Valgfri" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font-size:14px;box-sizing:border-box" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Pris (kr) *</label>
+              <input id="manualPricePrice" type="text" inputmode="decimal" value="${priceVal}" placeholder="0,00" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font-size:14px;box-sizing:border-box" />
+            </div>
+            <div>
+              <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px">Enhet *</label>
+              <select id="manualPriceUnit" onchange="toggleManualPriceUnitOther()" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font-size:14px;box-sizing:border-box">${unitOpts}</select>
+              <input id="manualPriceUnitOther" type="text" value="${customUnit}" placeholder="Egen enhet" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;font-size:14px;box-sizing:border-box;margin-top:6px;display:${!unitInList?'block':'none'}" />
+            </div>
+          </div>
+          <div id="manualPriceError" style="color:#dc2626;font-size:13px;font-weight:600;display:none"></div>
+        </div>
+        <div style="padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn secondary" onclick="closeManualPriceModal()">Avbryt</button>
+          <button class="btn primary" onclick="saveManualPrice('${id||''}')">${isEdit?'Oppdater':'Legg til'}</button>
+        </div>
+      `;
+      modal.style.display = 'flex';
+      setTimeout(()=>{ const nameEl=document.getElementById('manualPriceName'); if(nameEl) nameEl.focus(); }, 50);
+    };
+
+    window.closeManualPriceModal = function(){
+      const modal = document.getElementById('manualPriceModal');
+      const backdrop = document.getElementById('manualPriceBackdrop');
+      if(modal) modal.style.display = 'none';
+      if(backdrop) backdrop.style.display = 'none';
+    };
+
+    window.toggleManualPriceUnitOther = function(){
+      const sel = document.getElementById('manualPriceUnit');
+      const other = document.getElementById('manualPriceUnitOther');
+      if(!sel||!other) return;
+      other.style.display = sel.value === '__other' ? 'block' : 'none';
+      if(sel.value === '__other') other.focus();
+    };
+
+    window.saveManualPrice = function(id){
+      const name = (document.getElementById('manualPriceName').value||'').trim();
+      const desc = (document.getElementById('manualPriceDesc').value||'').trim();
+      const itemNo = (document.getElementById('manualPriceItemNo').value||'').trim();
+      const priceRaw = document.getElementById('manualPricePrice').value||'';
+      const unitSel = document.getElementById('manualPriceUnit').value;
+      const unitOther = (document.getElementById('manualPriceUnitOther').value||'').trim();
+      const unit = unitSel === '__other' ? unitOther : unitSel;
+      const errEl = document.getElementById('manualPriceError');
+      const showErr = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+
+      if(!name){ showErr('Navn er påkrevd'); return; }
+      if(priceRaw === '' || priceRaw == null){ showErr('Pris er påkrevd'); return; }
+      const price = parseNbNumber(priceRaw);
+      if(price < 0){ showErr('Pris må være 0 eller høyere'); return; }
+      if(!unit){ showErr('Enhet er påkrevd'); return; }
+
+      state.manualPriceCatalog = state.manualPriceCatalog || [];
+
+      if(id){
+        const existing = state.manualPriceCatalog.find(x=>x.id===id);
+        if(existing){
+          existing.name = name;
+          existing.productName = name;
+          existing.description = desc;
+          existing.itemNo = itemNo;
+          existing.userPrice = price;
+          existing.unit = unit;
+        }
+      } else {
+        state.manualPriceCatalog.push({
+          id: uid(),
+          itemNo: itemNo,
+          name: name,
+          productName: name,
+          description: desc,
+          userPrice: price,
+          unit: unit,
+          source: 'manual'
+        });
+      }
+
+      saveState();
+      closeManualPriceModal();
+      // Re-render relevant views if open
+      if(typeof renderProjectView === 'function') renderProjectView();
+    };
+
+    window.deleteManualPrice = function(id){
+      if(!confirm('Slette denne manuelle prisen?')) return;
+      state.manualPriceCatalog = (state.manualPriceCatalog||[]).filter(x=>x.id!==id);
+      saveState();
+      if(typeof renderProjectView === 'function') renderProjectView();
+    };
+
     function normalizeSearchText(str){
       return (str||'').toLowerCase().trim()
         .replace(/\s+/g,' ')
@@ -770,7 +935,7 @@
       if(!words.length) return [];
 
       const scored=[];
-      state.priceCatalog.forEach(item=>{
+      getMergedCatalog().forEach(item=>{
         const name=normalizeSearchText(item.productName||item.name||'');
         const desc=normalizeSearchText(item.description||'');
         const itemNo=normalizeSearchText(item.itemNo||'');
@@ -807,6 +972,9 @@
         // Exact itemNo match
         if(itemNo===q) score+=80;
 
+        // Manual entries: small bonus on exact-name match (user's own data wins ties)
+        if(item.source==='manual' && name===q) score+=5;
+
         scored.push({item,score});
       });
 
@@ -821,12 +989,20 @@
       const results=searchPriceCatalog(query);
       window._priceSearchActive=0;
       if(!query||!query.trim()){ host.innerHTML=''; return; }
-      if(!state.priceCatalog.length){ host.innerHTML='<div class="empty">Last opp en prisfil for å søke i varer.</div>'; return; }
-      if(!results.length){ host.innerHTML='<div class="empty">Ingen treff.</div>'; return; }
-      host.innerHTML=results.map((item,idx)=>`
+      const hasAnyCatalog = state.priceCatalog.length || (state.manualPriceCatalog||[]).length;
+      if(!hasAnyCatalog){ host.innerHTML='<div class="empty">Last opp en prisfil eller legg til manuelle priser for å søke.</div>'; return; }
+      if(!results.length){
+        host.innerHTML='<div class="empty">Ingen treff. <button class="btn small primary" style="margin-left:8px" onclick="openManualPriceModal(null,\''+escapeAttr(query)+'\')">+ Legg til manuelt</button></div>';
+        return;
+      }
+      host.innerHTML=results.map((item,idx)=>{
+        const badge = item.source==='manual'
+          ? ' <span style="background:var(--blue);color:#0F0E0C;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:0.04em;margin-left:6px;vertical-align:middle">Manuell</span>'
+          : '';
+        return `
         <div class="item priceSearchItem" data-idx="${idx}" data-item-id="${escapeHtml(item.id)}" onmousemove="priceSearchMouseMove(event,${idx})" style="cursor:pointer">
           <div>
-            <h4>${escapeHtml(item.productName||item.name)}</h4>
+            <h4>${escapeHtml(item.productName||item.name)}${badge}</h4>
             <p>${escapeHtml(item.description||'')}</p>
             <div class="pills" style="margin-top:8px">
               <button class="copy-artnr-btn" onclick="event.stopPropagation();copyArtikkelNummer('${escapeHtml(item.itemNo)}',this)">${escapeHtml(item.itemNo)} <span class="copy-artnr-label">Kopier</span></button>
@@ -840,7 +1016,7 @@
             <button class="btn small ${isFavoriteCatalog(item.id)?'success':'secondary'}" onclick="toggleFavoriteCatalog('${escapeHtml(item.id)}')">${isFavoriteCatalog(item.id)?'★ Favoritt':'☆ Legg til favoritt'}</button>
           </div>
         </div>
-      `).join('');
+      `;}).join('');
       updatePriceSearchActiveStyle();
     }
 
@@ -879,7 +1055,7 @@
       }
     };
 
-    function getCatalogItem(id){ return state.priceCatalog.find(x=>String(x.id)===String(id)); }
+    function getCatalogItem(id){ return getMergedCatalog().find(x=>String(x.id)===String(id)); }
     function getFavoriteCatalogItems(){ return (state.favoriteCatalogIds||[]).map(getCatalogItem).filter(Boolean).slice(0,12); }
     function getRecentCatalogItems(){ return (state.recentCatalogIds||[]).map(getCatalogItem).filter(Boolean).slice(0,10); }
     function isFavoriteCatalog(id){ return (state.favoriteCatalogIds||[]).includes(String(id)); }
@@ -1446,7 +1622,12 @@
       openOfferFullPreview();
 
       setTimeout(function(){
-        window.location.href=mailtoLink;
+        var a=document.createElement('a');
+        a.href=mailtoLink;
+        a.style.display='none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
       },1000);
     };
 
@@ -1477,7 +1658,7 @@
           priceRows+='<tr><td class="dc"><b>'+esc(post.name||'')+'</b>'+(post.description?'<br><span style="font-size:10pt;color:#555">'+esc(post.description)+'</span>':'')+(post.type==='option'?'<span style="font-size:9pt;color:#a96800;margin-left:6px">(opsjon)</span>':'')+'</td><td class="ac">'+fmt(post.price||0)+'</td></tr>';
         });
       } else {
-        priceRows='<tr><td class="dc"><b>Tomrerarbeider</b><br><span style="font-size:10pt;color:#555">'+cv.totalHours+' timer</span></td><td class="ac">'+fmt(cv.totalLaborSaleEx)+'</td></tr>';
+        priceRows='<tr><td class="dc"><b>Tomrerarbeider</b><br><span style="font-size:10pt;color:#555">'+(cv.totalWorkHours!=null?cv.totalWorkHours:cv.totalHours)+' timer</span></td><td class="ac">'+fmt(cv.totalLaborSaleEx)+'</td></tr>';
         if(cv.totalMatSaleEx>0) priceRows+='<tr><td class="dc"><b>Materialer</b></td><td class="ac">'+fmt(cv.totalMatSaleEx)+'</td></tr>';
         if(cv.extrasBase+cv.rigEx>0) priceRows+='<tr><td class="dc"><b>Rigg og drift</b></td><td class="ac">'+fmt(cv.extrasBase+cv.rigEx)+'</td></tr>';
       }

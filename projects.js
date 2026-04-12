@@ -83,6 +83,10 @@
       // Update Tømrerarbeid display live
       const laborEl=document.getElementById('summaryLaborVal');
       if(laborEl) laborEl.textContent=currency(vatM?c.totalLaborSaleEx*1.25:c.totalLaborSaleEx);
+      const extrasEl=document.getElementById('summaryExtrasVal');
+      if(extrasEl) extrasEl.textContent=currency(vatM?(c.extrasBase+c.rigEx)*1.25:(c.extrasBase+c.rigEx));
+      const extrasDetailEl=document.getElementById('summaryExtrasDetail');
+      if(extrasDetailEl) extrasDetailEl.textContent=(c.rigHours>0?'Rigg '+c.rigHours+'t + kjøring, drift m.m.':'Kjøring, rigg m.m.');
       const totalDisplayHours=(c.hoursTotal||0)+(ps.hours||0);
       const hoursEl=document.getElementById('summaryLaborHours');
       if(hoursEl) hoursEl.textContent='Totalt: '+totalDisplayHours+'t | Tømrer: '+(c.hoursTotal||0)+'t | Poster: '+(ps.hours||0)+'t';
@@ -253,11 +257,36 @@
       +'</div>';
     }
 
+    function renderManualPriceSection(){
+      var manual = state.manualPriceCatalog || [];
+      if(!manual.length) return '';
+      var rows = manual.map(function(m){
+        return '<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px">'
+          +'<div><div style="font-weight:600">'+escapeHtml(m.name||'')+'</div>'
+          +(m.description?'<div style="font-size:11px;color:var(--muted)">'+escapeHtml(m.description)+'</div>':'')
+          +'</div>'
+          +'<div style="color:var(--muted);font-size:12px">'+escapeHtml(m.unit||'')+'</div>'
+          +'<div style="font-weight:700">'+currency(m.userPrice||0)+'</div>'
+          +'<div style="display:flex;gap:4px">'
+          +'<button class="btn small secondary" onclick="openManualPriceModal(\''+m.id+'\')" style="padding:4px 8px;font-size:11px">Rediger</button>'
+          +'<button class="btn small danger" onclick="deleteManualPrice(\''+m.id+'\')" style="padding:4px 8px;font-size:11px">Slett</button>'
+          +'</div>'
+          +'</div>';
+      }).join('');
+      return '<div class="tab-section collapsed" style="margin-top:12px">'
+        +'<div class="tab-section-heading tab-section-toggle" onclick="toggleSection(this)">Manuelle priser <span style="font-weight:400;color:var(--muted);font-size:12px">('+manual.length+')</span></div>'
+        +'<div class="tab-section-body" style="padding:0">'
+        +rows
+        +'</div>'
+        +'</div>';
+    }
+
     function buildPriceCatalogMap(){
       var map = {};
-      if(!state.priceCatalog || !state.priceCatalog.length) return map;
+      var merged = getMergedCatalog();
+      if(!merged.length) return map;
 
-      state.priceCatalog.forEach(function(item){
+      merged.forEach(function(item){
         var productName = (item.productName || '').trim();
         var description = (item.description || '').trim();
         var fullName = (item.name || '').trim();
@@ -406,9 +435,9 @@
 
     function renderOperations(p){
       var ops=p.operations||[];
-      if(!ops.length) return '<div class="empty" style="padding:14px">Ingen operasjoner. Klikk <strong>+ Legg til jobb</strong> for a beregne arbeidstid automatisk.</div>';
-
-      var rows=ops.map(renderOperationRow).join('');
+      var rows=ops.length
+        ? ops.map(renderOperationRow).join('')
+        : '<div class="empty" style="padding:14px">Ingen operasjoner. Klikk <strong>+ Legg til jobb</strong> for a beregne arbeidstid automatisk.</div>';
       var html=rows+renderIndirectInputs(p)+'<div id="opSummary"></div>';
       return html;
     }
@@ -732,9 +761,10 @@
               <div class="toolbar">
                 <button class="btn small secondary" onclick="document.getElementById('priceFileInput').click()">Last opp prisfil</button>
                 ${state.priceCatalog.length?`<button class="btn small danger" onclick="clearPriceCatalog()">Fjern prisfil</button>`:''}
+                <button class="btn small secondary" onclick="openManualPriceModal()">+ Legg til manuelt</button>
               </div>
               <input id="priceFileInput" type="file" accept=".csv,text/csv" class="hidden" />
-              <div class="footer-note">${state.priceCatalog.length?`Aktiv: ${escapeHtml(state.priceFileName)} • ${state.priceCatalog.length} varer`:'Ingen prisfil lastet opp enda.'}</div>
+              <div class="footer-note">${state.priceCatalog.length?`Aktiv: ${escapeHtml(state.priceFileName)} • ${state.priceCatalog.length} varer`:'Ingen prisfil lastet opp enda.'}${(state.manualPriceCatalog||[]).length?` • ${state.manualPriceCatalog.length} manuelle`:''}</div>
             </div>
             <div>
               <label>Søk i prisfil — marker som favoritt</label>
@@ -742,6 +772,7 @@
             </div>
           </div>
           <div id="priceSearchResults" class="list" style="margin-top:12px"></div>
+          ${renderManualPriceSection()}
         </div>
 
         <div class="tab-section collapsed">
@@ -1137,8 +1168,8 @@
             </div>
             <div class="offer-stat-card amber-theme">
               <div class="offer-stat-label"> Andre kostnader</div>
-              <div class="offer-stat-value">${currency(p.settings.vatMode==='inc'?(c.extrasBase+c.rigEx)*1.25:(c.extrasBase+c.rigEx))}</div>
-              <div class="offer-stat-detail">Kjøring, rigg m.m.</div>
+              <div class="offer-stat-value" id="summaryExtrasVal">${currency(p.settings.vatMode==='inc'?(c.extrasBase+c.rigEx)*1.25:(c.extrasBase+c.rigEx))}</div>
+              <div class="offer-stat-detail" id="summaryExtrasDetail">${c.rigHours>0?'Rigg '+c.rigHours+'t + kjøring, drift m.m.':'Kjøring, rigg m.m.'}</div>
             </div>
           </div>
 

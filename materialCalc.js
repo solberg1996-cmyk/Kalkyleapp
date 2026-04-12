@@ -569,12 +569,190 @@ var matCalcDefs = {
   }
 };
 
+// ── Festemiddelkalkulator (verifikasjon) ───────────────
+// Én samlet kalkulator for å dobbeltsjekke antall skruer/spiker.
+// Felt-sett tilpasses valgt jobbtype. Kilder: Spigerverket, Gyproc,
+// Maxbo, Byggmakker m.fl.
+//
+// NOTE: Bruker customRender fordi felter endres dynamisk ved jobbtype-bytte.
+
+matCalcDefs.festemidler = {
+  label: 'Festemidler',
+  desc: 'Velg type jobb → antall skruer/spiker basert på norsk byggpraksis.',
+  fields: [
+    { id: 'jobb', label: 'Type jobb', type: 'select', options: [
+      { value: 'terrasse', label: 'Terrasse (bord → bjelker)' },
+      { value: 'kledning', label: 'Kledning (utvendig)' },
+      { value: 'gips', label: 'Gips' },
+      { value: 'stender', label: 'Stendervegg' },
+      { value: 'bjelkelag', label: 'Bjelkelag (bjelkesko)' }
+    ], default: 'terrasse' }
+  ],
+  // Dynamisk felt-sett per jobbtype
+  jobFields: {
+    terrasse: [
+      { id: 'areal', label: 'Areal (m²)', type: 'number', placeholder: '20' },
+      { id: 'bordBredde', label: 'Bordbredde (mm)', type: 'select', options: [
+        { value: '95', label: '95 mm' },
+        { value: '120', label: '120 mm' },
+        { value: '145', label: '145 mm (standard)' }
+      ], default: '145' },
+      { id: 'bjelkeCC', label: 'Bjelke c/c (mm)', type: 'select', options: [
+        { value: '300', label: '300 mm' },
+        { value: '400', label: '400 mm' },
+        { value: '600', label: '600 mm (standard)' }
+      ], default: '600' },
+      { id: 'skruerPerKryss', label: 'Skruer per bord per bjelke', type: 'select', options: [
+        { value: '2', label: '2 (standard)' },
+        { value: '1', label: '1 (skjult feste)' }
+      ], default: '2' }
+    ],
+    kledning: [
+      { id: 'areal', label: 'Areal (m²)', type: 'number', placeholder: '40' },
+      { id: 'type', label: 'Type kledning', type: 'select', options: [
+        { value: 'liggende', label: 'Liggende (1 spiker per lekt)' },
+        { value: 'staaende', label: 'Stående tømmermann (2 per lekt)' },
+        { value: 'staaendeEnkel', label: 'Stående enkel (1 per lekt)' }
+      ], default: 'liggende' },
+      { id: 'bordBredde', label: 'Bordbredde (mm)', type: 'select', options: [
+        { value: '98', label: '98 mm (4")' },
+        { value: '123', label: '123 mm (5")' },
+        { value: '148', label: '148 mm (6")' }
+      ], default: '148' },
+      { id: 'lektCC', label: 'Lekt c/c (mm)', type: 'select', options: [
+        { value: '400', label: '400 mm' },
+        { value: '600', label: '600 mm (standard)' }
+      ], default: '600' }
+    ],
+    gips: [
+      { id: 'areal', label: 'Areal (m²)', type: 'number', placeholder: '25' },
+      { id: 'antLag', label: 'Antall lag', type: 'select', options: [
+        { value: '1', label: '1 lag' },
+        { value: '2', label: '2 lag (synlig + indre)' }
+      ], default: '1' },
+      { id: 'plassering', label: 'Plassering', type: 'select', options: [
+        { value: 'vegg', label: 'Vegg' },
+        { value: 'tak', label: 'Tak (tettere feste)' }
+      ], default: 'vegg' }
+    ],
+    stender: [
+      { id: 'veggLengde', label: 'Vegglengde (m)', type: 'number', placeholder: '6' },
+      { id: 'stenderCC', label: 'Stender c/c (mm)', type: 'select', options: [
+        { value: '300', label: '300 mm' },
+        { value: '400', label: '400 mm' },
+        { value: '600', label: '600 mm (standard)' }
+      ], default: '600' },
+      { id: 'svillFeste', label: 'Svill/rem-feste c/c (mm)', type: 'select', options: [
+        { value: '400', label: '400 mm' },
+        { value: '600', label: '600 mm' }
+      ], default: '400' },
+      { id: 'antallSider', label: 'Antall vegger med samme mål', type: 'number', placeholder: '1', default: 1 }
+    ],
+    bjelkelag: [
+      { id: 'antBjelker', label: 'Antall bjelker', type: 'number', placeholder: '10' },
+      { id: 'antSider', label: 'Antall bjelkesko per bjelke', type: 'select', options: [
+        { value: '1', label: '1 (én ende)' },
+        { value: '2', label: '2 (begge ender)' }
+      ], default: '2' },
+      { id: 'skruerPerSko', label: 'Skruer per bjelkesko', type: 'select', options: [
+        { value: '8', label: '8 (lett last)' },
+        { value: '10', label: '10 (standard)' },
+        { value: '12', label: '12 (tung last)' }
+      ], default: '10' }
+    ]
+  },
+  calc: function(v) {
+    var jobb = v.jobb || 'terrasse';
+    if (jobb === 'terrasse') {
+      var areal = Number(v.areal) || 0;
+      var bredde = Number(v.bordBredde) || 145;
+      var bjelkeCC = Number(v.bjelkeCC) || 600;
+      var perKryss = Number(v.skruerPerKryss) || 2;
+      if (areal <= 0) return null;
+      var lmPerM2 = 1000 / bredde;
+      var kryssPerLm = 1000 / bjelkeCC;
+      var antall = Math.ceil(areal * lmPerM2 * kryssPerLm * perKryss);
+      return [
+        { label: 'Terrasseskruer', value: antall, unit: 'stk' },
+        { label: 'Ca. per m²', value: Math.round(antall / areal), unit: 'stk/m²' },
+        { label: 'Formel', value: areal + ' m² × (1000/' + bredde + ') lm/m² × (1000/' + bjelkeCC + ') kryss/lm × ' + perKryss, unit: '' }
+      ];
+    }
+    if (jobb === 'kledning') {
+      var areal = Number(v.areal) || 0;
+      var bredde = Number(v.bordBredde) || 148;
+      var lektCC = Number(v.lektCC) || 600;
+      if (areal <= 0) return null;
+      var spikerPerKryss = v.type === 'staaende' ? 2 : 1;
+      var dekkbredde = bredde - 15;
+      var lmPerM2 = 1000 / dekkbredde;
+      var kryssPerLm = 1000 / lektCC;
+      var totLm = areal * lmPerM2;
+      var antall = Math.ceil(totLm * kryssPerLm * spikerPerKryss);
+      return [
+        { label: 'Spiker / skruer', value: antall, unit: 'stk' },
+        { label: 'Ca. per m²', value: Math.round(antall / areal), unit: 'stk/m²' },
+        { label: 'Løpemeter bord', value: Math.ceil(totLm), unit: 'lm' },
+        { label: 'Formel', value: areal + ' m² × ' + Math.round(lmPerM2*10)/10 + ' lm/m² × ' + Math.round(kryssPerLm*100)/100 + ' kryss/lm × ' + spikerPerKryss, unit: '' }
+      ];
+    }
+    if (jobb === 'gips') {
+      var areal = Number(v.areal) || 0;
+      var antLag = Number(v.antLag) || 1;
+      if (areal <= 0) return null;
+      var synligPerM2 = v.plassering === 'tak' ? 25 : 20;
+      var indrePerM2 = 6;
+      var antSynlig = Math.ceil(areal * synligPerM2);
+      var antIndre = antLag > 1 ? Math.ceil(areal * indrePerM2 * (antLag - 1)) : 0;
+      var rows = [
+        { label: 'Gipsskruer totalt', value: antSynlig + antIndre, unit: 'stk' },
+        { label: 'Synlig lag', value: antSynlig, unit: 'stk (' + synligPerM2 + '/m²)' }
+      ];
+      if (antIndre > 0) rows.push({ label: 'Indre lag', value: antIndre, unit: 'stk (' + indrePerM2 + '/m²)' });
+      rows.push({ label: 'Formel', value: areal + ' m² × ' + synligPerM2 + '/m²' + (antIndre > 0 ? ' + ' + (antLag-1) + '× ' + indrePerM2 + '/m² indre' : ''), unit: '' });
+      return rows;
+    }
+    if (jobb === 'stender') {
+      var lengde = Number(v.veggLengde) || 0;
+      var stenderCC = Number(v.stenderCC) || 600;
+      var svillCC = Number(v.svillFeste) || 400;
+      var antSider = Number(v.antallSider) || 1;
+      if (lengde <= 0) return null;
+      var antStender = Math.ceil((lengde * 1000) / stenderCC) + 1;
+      var stenderSkruer = antStender * 4;
+      var svillSkruer = Math.ceil((lengde * 1000) / svillCC) * 2;
+      var totalPerVegg = stenderSkruer + svillSkruer;
+      return [
+        { label: 'Skruer / spiker totalt', value: totalPerVegg * antSider, unit: 'stk' },
+        { label: 'Per vegg', value: totalPerVegg, unit: 'stk' },
+        { label: 'Stender-innfesting', value: stenderSkruer * antSider, unit: 'stk (4 × ' + antStender + ' stendere)' },
+        { label: 'Svill + rem', value: svillSkruer * antSider, unit: 'stk (cc ' + svillCC + ')' },
+        { label: 'Formel', value: '(' + antStender + ' stendere × 4) + (svill+rem × ' + Math.ceil((lengde*1000)/svillCC) + ')' + (antSider > 1 ? ' × ' + antSider + ' vegger' : ''), unit: '' }
+      ];
+    }
+    if (jobb === 'bjelkelag') {
+      var antBjelker = Number(v.antBjelker) || 0;
+      var antSider = Number(v.antSider) || 2;
+      var perSko = Number(v.skruerPerSko) || 10;
+      if (antBjelker <= 0) return null;
+      var antSko = antBjelker * antSider;
+      return [
+        { label: 'Bjelkesko-skruer', value: antSko * perSko, unit: 'stk' },
+        { label: 'Antall bjelkesko', value: antSko, unit: 'stk' },
+        { label: 'Formel', value: antBjelker + ' bjelker × ' + antSider + ' sko × ' + perSko + ' skruer', unit: '' }
+      ];
+    }
+    return null;
+  }
+};
+
 var _matCalcCurrent = 'stender';
 
 var _matCalcCategories = [
   { id: 'reisverk', label: 'Reisverk', items: ['stender'] },
   { id: 'utvendig', label: 'Utvendig', items: ['kledning', 'lekter', 'tak', 'terrasse', 'rekkverk'] },
-  { id: 'innvendig', label: 'Innvendig', items: ['gips', 'isolasjon', 'gulv', 'listverk', 'vindu'] }
+  { id: 'innvendig', label: 'Innvendig', items: ['gips', 'isolasjon', 'gulv', 'listverk', 'vindu'] },
+  { id: 'verifikasjon', label: 'Verifikasjon', items: ['festemidler'] }
 ];
 
 function openMatCalc() {
@@ -624,13 +802,33 @@ function renderMatCalcBody() {
   var def = matCalcDefs[_matCalcCurrent];
   if (!def) return;
 
+  // Slå sammen faste felter + dynamiske felter basert på jobbtype-valg
+  var fields = (def.fields || []).slice();
+  if (def.jobFields) {
+    var jobbField = def.fields && def.fields.find(function(f){return f.id==='jobb';});
+    var currentJobb = jobbField ? jobbField.default : Object.keys(def.jobFields)[0];
+    fields = fields.concat(def.jobFields[currentJobb] || []);
+  }
+
   var html = '<div class="mc-desc">' + def.desc + '</div>';
-  html += '<div class="mc-fields">';
-  def.fields.forEach(function(f) {
+  html += '<div id="mcFieldsWrap" class="mc-fields">';
+  html += renderMatCalcFields(fields);
+  html += '</div>';
+  html += '<div id="matCalcResult" class="mc-result mc-result-empty"><div class="mc-result-placeholder">Fyll inn verdier for å se resultat</div></div>';
+  container.innerHTML = html;
+
+  calcMatCalc();
+}
+
+function renderMatCalcFields(fields) {
+  var html = '';
+  fields.forEach(function(f) {
     html += '<div class="mc-field">';
     html += '<label for="mc_' + f.id + '">' + f.label + '</label>';
     if (f.type === 'select') {
-      html += '<select id="mc_' + f.id + '" onchange="calcMatCalc()">';
+      // Jobb-selector re-rendrer felter ved endring
+      var handler = f.id === 'jobb' ? 'onJobbChange()' : 'calcMatCalc()';
+      html += '<select id="mc_' + f.id + '" onchange="' + handler + '">';
       f.options.forEach(function(opt) {
         var sel = (f.default !== undefined && String(f.default) === opt.value) ? ' selected' : '';
         html += '<option value="' + opt.value + '"' + sel + '>' + opt.label + '</option>';
@@ -645,10 +843,17 @@ function renderMatCalcBody() {
     }
     html += '</div>';
   });
-  html += '</div>';
-  html += '<div id="matCalcResult" class="mc-result mc-result-empty"><div class="mc-result-placeholder">Fyll inn verdier for å se resultat</div></div>';
-  container.innerHTML = html;
+  return html;
+}
 
+function onJobbChange() {
+  var def = matCalcDefs[_matCalcCurrent];
+  if (!def || !def.jobFields) return;
+  var jobb = document.getElementById('mc_jobb').value;
+  var baseFields = (def.fields || []).slice();
+  var newFields = baseFields.concat(def.jobFields[jobb] || []);
+  var wrap = document.getElementById('mcFieldsWrap');
+  if (wrap) wrap.innerHTML = renderMatCalcFields(newFields);
   calcMatCalc();
 }
 
@@ -656,7 +861,13 @@ function calcMatCalc() {
   var def = matCalcDefs[_matCalcCurrent];
   if (!def) return;
   var values = {};
-  def.fields.forEach(function(f) {
+  var fields = (def.fields || []).slice();
+  if (def.jobFields) {
+    var jobbEl = document.getElementById('mc_jobb');
+    var jobb = jobbEl ? jobbEl.value : Object.keys(def.jobFields)[0];
+    fields = fields.concat(def.jobFields[jobb] || []);
+  }
+  fields.forEach(function(f) {
     var el = document.getElementById('mc_' + f.id);
     if (!el) return;
     if (f.type === 'checkbox') {

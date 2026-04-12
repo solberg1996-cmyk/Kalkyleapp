@@ -347,7 +347,12 @@ setTimeout(function(){URL.revokeObjectURL(url);},60000);
       openOfferFullPreview();
 
       setTimeout(function(){
-        window.location.href=mailtoLink;
+        var a=document.createElement('a');
+        a.href=mailtoLink;
+        a.style.display='none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
       },1000);
     };
 

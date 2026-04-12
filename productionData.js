@@ -403,5 +403,6 @@ const laborData = {
 
 // ── EKSPORTER TIL GLOBALT SCOPE ──────────────────────────────
 
+window.rateSettingsGroups = rateSettingsGroups;
 window.adjustmentFactors = adjustmentFactors;
 window.laborData = laborData;

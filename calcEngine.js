@@ -346,10 +346,22 @@ function compute(project){
   var materials = project.materials || [];
   var extras = project.extras || {};
   var offerPosts = project.offerPosts || [];
+  var indirect = project.indirect || {};
 
   const hoursTotal=Number(work.hours)||0;
-  const laborCost=hoursTotal*(Number(work.internalCost)||0);
-  const laborSaleEx=hoursTotal*(Number(work.timeRate)||0);
+  const timeRateNum=Number(work.timeRate)||0;
+  const internalCostNum=Number(work.internalCost)||0;
+  const laborCost=hoursTotal*internalCostNum;
+  const laborSaleEx=hoursTotal*timeRateNum;
+
+  // Rigg-timer: kun eksplisitt satt verdi (>0) flyttes til egen rigg-post.
+  // Auto-beregnet rigg (riggTimer=null) forblir del av work.hours som i dag.
+  const rigHoursExplicit=(indirect.riggTimer!=null && Number(indirect.riggTimer)>0)
+    ? Number(indirect.riggTimer) : 0;
+  const rigHoursSale=rigHoursExplicit*timeRateNum;
+  const rigHoursCost=rigHoursExplicit*internalCostNum;
+  const laborSaleExAdj=Math.max(0, laborSaleEx-rigHoursSale);
+  const laborCostAdj=Math.max(0, laborCost-rigHoursCost);
   let matCost=0, matSaleEx=0;
   materials.forEach(m=>{
     const qty=Number(m.qty)||0,cost=Number(m.cost)||0,waste=Number(m.waste)||0,markup=Number(m.markup)||0;
@@ -385,23 +397,26 @@ function compute(project){
   const driftCost=totalHours*driftRate;
   const extrasBase=extrasFixed+driftCost;
 
-  const rigEx=(laborSaleEx+matSaleEx)*((Number(extras.rigPercent)||0)/100);
-  const costPrice=laborCost+matCost+extrasBase+rigEx;
-  const saleEx=laborSaleEx+matSaleEx+extrasBase+rigEx;
+  const rigPercentNum=(Number(extras.rigPercent)||0)/100;
+  const rigPercentSale=(laborSaleExAdj+matSaleEx)*rigPercentNum;
+  const rigEx=rigHoursSale+rigPercentSale;
+  // Prosent-rigg har null margin (kost=salg). Rigg-timer har normal margin via internalCost.
+  const rigCost=rigHoursCost+rigPercentSale;
+  const costPrice=laborCostAdj+matCost+extrasBase+rigCost;
+  const saleEx=laborSaleExAdj+matSaleEx+extrasBase+rigEx;
   const saleInc=saleEx*1.25, profit=saleEx-costPrice;
   const margin=saleEx?(profit/saleEx*100):0;
 
-  const ratePerHour=(Number(work.timeRate)||0);
-  const costPerHour=(Number(work.internalCost)||0);
-  const totalLaborSaleEx=hoursTotal*ratePerHour + snapLaborSaleEx;
-  const totalLaborCost=hoursTotal*costPerHour + snapLaborCost;
-  const totalCostPrice=totalLaborCost+totalMatCost+extrasBase+rigEx;
+  const totalLaborSaleEx=laborSaleExAdj + snapLaborSaleEx;
+  const totalLaborCost=laborCostAdj + snapLaborCost;
+  const totalCostPrice=totalLaborCost+totalMatCost+extrasBase+rigCost;
   const totalSaleEx=totalLaborSaleEx+totalMatSaleEx+extrasBase+rigEx;
   const totalProfit=totalSaleEx-totalCostPrice;
   const totalMargin=totalSaleEx?(totalProfit/totalSaleEx*100):0;
 
-  return {hoursTotal,laborCost,laborSaleEx,matCost,matSaleEx,extrasBase,rigEx,costPrice,saleEx,saleInc,vat:saleEx*0.25,profit,margin,db:margin,driftCost,
-    totalMatCost,totalMatSaleEx,totalHours,totalLaborSaleEx,totalLaborCost,totalCostPrice,totalSaleEx,totalProfit,totalMargin};
+  const totalWorkHours=Math.max(0, totalHours - rigHoursExplicit);
+  return {hoursTotal,laborCost,laborSaleEx,matCost,matSaleEx,extrasBase,rigEx,rigHours:rigHoursExplicit,costPrice,saleEx,saleInc,vat:saleEx*0.25,profit,margin,db:margin,driftCost,
+    totalMatCost,totalMatSaleEx,totalHours,totalWorkHours,totalLaborSaleEx,totalLaborCost,totalCostPrice,totalSaleEx,totalProfit,totalMargin};
 }
 
 
