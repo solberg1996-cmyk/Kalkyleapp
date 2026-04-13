@@ -32,7 +32,9 @@ const rateSettingsGroups = [
   {label:'Beslag', keys:['bordtakbeslag','fotplate','overgangsbeslag','vannbrett','vinkel_beslag','vinkel_beslag_stk','vindskibeslag','vindusbeslag']},
   {label:'Våtrom', keys:['vatromsplater_vegg','underpanel_vatrom','smoremembran_gulv','smoremembran_vegg','sveisemembran']},
   {label:'Levegg og pergola', keys:['levegg_stolpe','levegg_kledning','levegg_glass','levegg_rigle','stolper_pergola','baerebjelke_pergola','tak_pergola','pergola_sperre']},
-  {label:'Diverse', keys:['garasjeport','bod_dor','skyvedor_montering','skyvedor_pocket','garderobe_skyvedor','innkassing','innkassing_reisverk','kasse_nisje','badeinnredning_montering','stillas_montering','stillas_demontering']},
+  {label:'Rigg og Stillas', keys:['stillas_montering','stillas_demontering','justering_av_bein']},
+  {label:'Rehab og riving', keys:['rive_panel','rive_tak','rive_vindu','rive_gulv','rive_innervegg']},
+  {label:'Diverse', keys:['garasjeport','bod_dor','skyvedor_montering','skyvedor_pocket','garderobe_skyvedor','innkassing','innkassing_reisverk','kasse_nisje','badeinnredning_montering']},
 
 ];
 
@@ -202,6 +204,13 @@ const laborData = {
   stillas_montering:   { rate: 0.074, unit: 't/m²', label: 'Montering lettstillas', category: 'stillas', source: 'svenn', confidence: 'high' },
   stillas_demontering: { rate: 0.074, unit: 't/m²', label: 'Demontering lettstillas', category: 'stillas', source: 'svenn', confidence: 'high' },
   justering_av_bein:   { rate: 0.066, unit: 't/m²', label: 'Justering av bein', category: 'stillas', source: 'svenn', confidence: 'high' },
+
+  // ── Riving (SmartKalk) ────────────────────────────────────
+  rive_panel:       { rate: 0.78, unit: 't/m²', label: 'Riving panel', category: 'rehab', source: 'smartkalk', confidence: 'high' },
+  rive_tak:         { rate: 1.94, unit: 't/m²', label: 'Riving tak', category: 'rehab', source: 'smartkalk', confidence: 'high' },
+  rive_vindu:       { rate: 1.94, unit: 't/stk', label: 'Riving vindu', category: 'rehab', source: 'smartkalk', confidence: 'high' },
+  rive_gulv:        { rate: 0.30, unit: 't/m²', label: 'Riving gulv', category: 'rehab', source: 'estimat', confidence: 'medium' },
+  rive_innervegg:   { rate: 0.80, unit: 't/m²', label: 'Riving innervegg', category: 'rehab', source: 'estimat', confidence: 'medium' },
 
   // ── Tak (Svenn) ───────────────────────────────────────────
   forankring_snofanger: { rate: 0.026, unit: 't/lm', label: 'Forankring snøfanger', category: 'tak', source: 'svenn', confidence: 'medium' },

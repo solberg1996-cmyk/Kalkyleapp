@@ -1801,9 +1801,11 @@
     };
 
     window.selectCalcJobCategory=function(category, value){
-      const otherCategory = category === 'utvendig' ? 'innvendig' : 'utvendig';
-      const otherSelect = document.getElementById('calcJobType' + otherCategory.charAt(0).toUpperCase() + otherCategory.slice(1));
-      if(otherSelect) otherSelect.value = '';
+      const allCategories = ['utvendig','innvendig','rehab'];
+      allCategories.filter(c => c !== category).forEach(c => {
+        const sel = document.getElementById('calcJobType' + c.charAt(0).toUpperCase() + c.slice(1));
+        if(sel) sel.value = '';
+      });
       const hiddenField = document.getElementById('calcJobType');
       if(hiddenField) hiddenField.value = value;
       updateCalcWidget();
@@ -2248,6 +2250,8 @@
       if(jobSelectU) jobSelectU.value='';
       const jobSelectI=document.getElementById('calcJobTypeInnvendig');
       if(jobSelectI) jobSelectI.value='';
+      const jobSelectR=document.getElementById('calcJobTypeRehab');
+      if(jobSelectR) jobSelectR.value='';
       const inputsEl=document.getElementById('calcInputs');
       if(inputsEl) inputsEl.innerHTML='';
       const resultsEl=document.getElementById('calcResults');

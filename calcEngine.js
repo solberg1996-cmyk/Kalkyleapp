@@ -170,7 +170,8 @@ function calculateRiggingTime(project, direkteTimer) {
 
   var ops = project.operations || [];
   var harHoyde = ops.some(function(op) { return op.hoyde && op.hoyde !== 'bakke'; });
-  var stillas = harHoyde ? round1(Math.max(direkteTimer * 0.04, 1)) : 0;
+  var harStillasOp = ops.some(function(op) { return op && op.type === 'stillas'; });
+  var stillas = (harHoyde && !harStillasOp) ? round1(Math.max(direkteTimer * 0.04, 1)) : 0;
 
   return {
     timer: round1(grunn + lopende + stillas),
@@ -616,7 +617,7 @@ function buildOperationEstimate(op, priceCatalog, manualPrices) {
     materialer = materialLines.map(function(m) {
       var catalogEntry = findCatalogPrice(m.name, priceCatalog, manualPrices);
       var qty = Number(m.qty) || 0;
-      var cost = Number(catalogEntry.cost) || 0;
+      var cost = m.cost != null ? (Number(m.cost) || 0) : (Number(catalogEntry.cost) || 0);
       var waste = Number(m.waste) || 0;
 
       var withWaste = qty * cost * (1 + waste / 100);

@@ -20,7 +20,7 @@ const jobCategories = {
     jobs: [
       'grunnarbeid','reisverk','bjelkelag','dragere','kledning',
       'etterisolering','utv_listing','hjornekasser','vindu','ytterdor',
-      'takjobb','vindskier','takrenner','terrasse','platting',
+      'takjobb','vindskier','takrenner','stillas','terrasse','platting',
       'rekkverk','levegg','utv_trapp','pergola','garasje',
       'carport','bod','inngangsparti','tilbygg','gjerde',
     ],
@@ -34,11 +34,15 @@ const jobCategories = {
       'inn_vindu','inn_foring','vindulisting','vindusbrett',
       'innerdor','skyvedor',
       'parkett','laminat','heltregulv',
-      'inn_trapp','rehab_trapp','inn_rekkverk',
+      'inn_trapp','inn_rekkverk',
       'kjokken','benkeplater','hvitevarer','garderobe','spesialinnredning',
       'vatromsplater','innkassing','kasser_nisjer','badeinnredning',
       'gulvlister','taklister','gerikter','hjornelister',
     ],
+  },
+  rehab: {
+    label: 'Rehab og riving',
+    jobs: ['riving','avfall','rehab_trapp'],
   },
 };
 
@@ -50,8 +54,13 @@ const utvendigSubgroups = [
   {label:'Fasade og kledning', jobs:['kledning','etterisolering','utv_listing','hjornekasser']},
   {label:'Vinduer og dorer', jobs:['vindu','ytterdor','inngangsparti']},
   {label:'Tak', jobs:['takjobb','vindskier','takrenner']},
+  {label:'Rigg og Stillas', jobs:['stillas']},
   {label:'Terrasse og uteplass', jobs:['terrasse','platting','rekkverk','levegg','utv_trapp','pergola']},
   {label:'Bygg', jobs:['garasje','carport','bod','tilbygg','gjerde']},
+];
+
+const rehabSubgroups = [
+  {label:'Riving og rehab', jobs:['riving','avfall','rehab_trapp']},
 ];
 
 const innvendigSubgroups = [
@@ -60,7 +69,7 @@ const innvendigSubgroups = [
   {label:'Vinduer innvendig', jobs:['inn_vindu','inn_foring','vindulisting','vindusbrett']},
   {label:'Dorer', jobs:['innerdor','skyvedor']},
   {label:'Gulv', jobs:['parkett','laminat','heltregulv']},
-  {label:'Trapper', jobs:['inn_trapp','rehab_trapp','inn_rekkverk']},
+  {label:'Trapper', jobs:['inn_trapp','inn_rekkverk']},
   {label:'Kjokken og innredning', jobs:['kjokken','benkeplater','hvitevarer','garderobe','spesialinnredning']},
   {label:'Bad og vatrom', jobs:['vatromsplater','innkassing','kasser_nisjer','badeinnredning']},
   {label:'Listverk', jobs:['gulvlister','taklister','gerikter','hjornelister']},
@@ -1873,6 +1882,84 @@ const calcDefs = {
           {name:geriktType,qty:totLm,unit:'lm',waste:10,laborId:'karmlist'},
           {name:'Dykkert 30mm',qty:Math.ceil(totLm/30),unit:'pk',waste:0},
           {name:'Fugemasse / lim',qty:Math.ceil((v.antallDorer+v.antallVinduer)/4),unit:'tube',waste:0},
+        ],
+      };
+    }
+  },
+
+  // ══════════════════════════════════════════════════════════
+  // REHAB OG RIGG
+  // ══════════════════════════════════════════════════════════
+
+  stillas: {
+    label:'Stillas',
+    materialOptions:[],
+    inputs:[
+      {id:'lengde',label:'Fasadelengde (m)',default:8},
+      {id:'hoyde',label:'Fasadehøyde (m)',default:3},
+      {id:'leiepris',label:'Leiepris totalt (kr)',default:15000},
+    ],
+    calc(v){
+      const stillasAreal=Math.max(0,(v.lengde||0)*((v.hoyde||0)+1));
+      const leie=Math.max(0,Number(v.leiepris)||0);
+      return {
+        areal:stillasAreal.toFixed(1)+' m² stillas',
+        info:`Fasade ${v.lengde||0}×${v.hoyde||0} m`,
+        materialer:[
+          {name:'Stillas montering',qty:stillasAreal,unit:'m²',waste:0,laborId:'stillas_montering'},
+          {name:'Justering av bein',qty:stillasAreal,unit:'m²',waste:0,laborId:'justering_av_bein'},
+          {name:'Stillas demontering',qty:stillasAreal,unit:'m²',waste:0,laborId:'stillas_demontering'},
+          {name:'Stillas leie',qty:1,unit:'jobb',waste:0,cost:leie},
+        ],
+      };
+    }
+  },
+
+  riving: {
+    label:'Riving',
+    materialOptions:[],
+    inputs:[
+      {id:'panelM2',label:'Rive panel (m²)',default:0},
+      {id:'takM2',label:'Rive tak (m²)',default:0},
+      {id:'vinduStk',label:'Rive vindu (stk)',default:0},
+      {id:'gulvM2',label:'Rive gulv (m²)',default:0},
+      {id:'innerveggM2',label:'Rive innervegg (m²)',default:0},
+    ],
+    calc(v){
+      const lines=[];
+      if(v.panelM2>0)     lines.push({name:'Rive utv. panel',qty:v.panelM2,unit:'m²',waste:0,laborId:'rive_panel'});
+      if(v.takM2>0)       lines.push({name:'Rive tak',qty:v.takM2,unit:'m²',waste:0,laborId:'rive_tak'});
+      if(v.vinduStk>0)    lines.push({name:'Rive vindu',qty:v.vinduStk,unit:'stk',waste:0,laborId:'rive_vindu'});
+      if(v.gulvM2>0)      lines.push({name:'Rive gulv',qty:v.gulvM2,unit:'m²',waste:0,laborId:'rive_gulv'});
+      if(v.innerveggM2>0) lines.push({name:'Rive innervegg',qty:v.innerveggM2,unit:'m²',waste:0,laborId:'rive_innervegg'});
+      const sum=(v.panelM2||0)+(v.takM2||0)+(v.gulvM2||0)+(v.innerveggM2||0);
+      return {
+        areal:sum>0?sum.toFixed(0)+' m² + '+(v.vinduStk||0)+' vinduer':'(ingen valg)',
+        info:'Rive-elementer valgt',
+        materialer:lines,
+      };
+    }
+  },
+
+  avfall: {
+    label:'Avfall og bortkjøring',
+    materialOptions:[],
+    inputs:[
+      {id:'containerKost',label:'Container leie (kr)',default:0},
+      {id:'bortkjoringKost',label:'Bortkjøring (kr)',default:0},
+      {id:'deponiKost',label:'Deponi-avgift (kr)',default:0},
+    ],
+    calc(v){
+      const c=Math.max(0,Number(v.containerKost)||0);
+      const b=Math.max(0,Number(v.bortkjoringKost)||0);
+      const d=Math.max(0,Number(v.deponiKost)||0);
+      return {
+        areal:'Sum: '+(c+b+d).toLocaleString('nb-NO')+' kr',
+        info:'Avfallshåndtering',
+        materialer:[
+          {name:'Container leie',qty:1,unit:'stk',waste:0,cost:c},
+          {name:'Bortkjøring',qty:1,unit:'jobb',waste:0,cost:b},
+          {name:'Deponi-avgift',qty:1,unit:'jobb',waste:0,cost:d},
         ],
       };
     }

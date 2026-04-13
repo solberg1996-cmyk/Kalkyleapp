@@ -689,6 +689,20 @@
                   ).join('')}
                 </select>
               </div>
+              <div class="calc-job-col calc-job-rehab">
+                <label>Rehab og riving</label>
+                <select id="calcJobTypeRehab" onchange="selectCalcJobCategory('rehab', this.value)">
+                  <option value="">-- Velg rehab-jobb --</option>
+                  ${(typeof rehabSubgroups!=='undefined'?rehabSubgroups:[]).map(g =>
+                    '<optgroup label="'+g.label+'">'
+                    +g.jobs.map(k => {
+                      const def = (window.calcDefs||{})[k];
+                      return '<option value="'+k+'">'+(def ? def.label : k)+'</option>';
+                    }).join('')
+                    +'</optgroup>'
+                  ).join('')}
+                </select>
+              </div>
             </div>
             <input type="hidden" id="calcJobType" />
             <div id="calcInputs"></div>

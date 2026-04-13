@@ -426,7 +426,7 @@
     /* ── Calc Widget Styles ──────────────────────────────── */
     .calc-widget-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
     .calc-widget-header .section-title{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.02em}
-    .calc-job-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    .calc-job-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
 
     /* ── Job column shared ── */
     .calc-job-col{position:relative}
@@ -434,6 +434,7 @@
     .calc-job-col label::before{content:'';display:inline-block;width:8px;height:8px;border-radius:3px;flex-shrink:0}
     .calc-job-utvendig label::before{background:var(--blue)}
     .calc-job-innvendig label::before{background:var(--accent)}
+    .calc-job-rehab label::before{background:var(--cyan)}
 
     /* ── Select base ── */
     .calc-job-col select{
@@ -766,6 +767,257 @@
     .offer-bottom-stat{padding:14px;background:var(--bg-warm);border:1px solid var(--line);border-radius:var(--radius-xs)}
     .offer-bottom-stat strong{font-family:var(--font-display);font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--muted)}
     .offer-bottom-stat div{font-family:var(--font-display);font-size:17px;font-weight:700}
+
+    /* ══════════════════════════════════════════════════════
+       TILBUDSVISNING — Editor (redigeringsruten)
+       ══════════════════════════════════════════════════════ */
+    .offer-editor{position:relative;height:calc(100vh - 130px);display:flex;flex-direction:column;background:var(--bg)}
+
+    .offer-editor-toolbar{
+      display:flex;align-items:center;gap:18px;
+      padding:14px 28px;border-bottom:1px solid var(--line);
+      background:var(--card);position:sticky;top:0;z-index:5;
+    }
+    .offer-editor-toolbar .toolbar-eyebrow{
+      font-family:var(--font-display);font-size:10px;
+      color:var(--muted);font-weight:700;
+      text-transform:uppercase;letter-spacing:.14em;
+    }
+    .offer-editor-toolbar .toolbar-title{
+      font-family:var(--font-display);font-size:18px;font-weight:700;
+      letter-spacing:-.02em;color:var(--text);margin-top:2px;line-height:1.1;
+    }
+    .offer-editor-toolbar .toolbar-spacer{flex:1}
+    .offer-editor-toolbar .toolbar-actions{display:flex;gap:8px;align-items:center}
+
+    .offer-editor-body{position:relative;flex:1;overflow:hidden}
+    .offer-editor-scroll{
+      height:100%;overflow-y:auto;
+      padding:32px 240px 96px 36px;
+      display:flex;flex-direction:column;gap:40px;
+    }
+
+    .offer-editor-thumb{
+      position:absolute;top:28px;right:28px;z-index:4;
+      display:flex;flex-direction:column;align-items:center;gap:8px;
+    }
+    .offer-editor-thumb .thumb-label{
+      font-family:var(--font-display);font-size:10px;color:var(--muted);
+      font-weight:700;text-transform:uppercase;letter-spacing:.14em;
+    }
+    .offer-editor-thumb .thumb-frame{
+      width:170px;height:240px;overflow:hidden;
+      border-radius:4px;border:1px solid var(--line-strong);
+      box-shadow:var(--shadow-lg);cursor:pointer;position:relative;
+      transition:transform var(--dur-normal) var(--ease), box-shadow var(--dur-normal) var(--ease);
+    }
+    .offer-editor-thumb .thumb-frame:hover{transform:translateY(-2px);box-shadow:var(--shadow-xl)}
+    .offer-editor-thumb .thumb-frame::after{
+      content:'Åpne full visning';
+      position:absolute;bottom:0;left:0;right:0;
+      background:linear-gradient(to top,rgba(22,39,54,.92) 60%,rgba(22,39,54,0));
+      color:#fff;font-size:10px;font-weight:600;text-align:center;
+      padding:14px 6px 8px;letter-spacing:.04em;
+      opacity:0;transition:opacity var(--dur-normal) var(--ease);
+    }
+    .offer-editor-thumb .thumb-frame:hover::after{opacity:1}
+
+    /* Sone-headers */
+    .offer-zone{display:flex;flex-direction:column;gap:16px}
+    .offer-zone-head{display:flex;align-items:baseline;gap:16px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+    .offer-zone-head h2{
+      font-family:var(--font-display);
+      font-size:24px;font-weight:700;letter-spacing:-.02em;
+      color:var(--text);line-height:1.15;
+    }
+    .offer-zone-head .zone-hint{font-size:12px;color:var(--muted);font-weight:500;line-height:1.4}
+
+    /* Kort */
+    .offer-card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:22px 24px;
+      box-shadow:var(--shadow-sm);
+    }
+    .offer-card-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:12px}
+    .offer-card-title{
+      font-family:var(--font-display);
+      font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.01em;
+    }
+    .offer-card-hint{font-size:12.5px;color:var(--muted);margin-bottom:10px;line-height:1.5}
+    .offer-card-list{display:flex;flex-direction:column;gap:2px}
+
+    /* Custom checkbox + radio */
+    .offer-check{
+      display:flex;align-items:center;gap:10px;
+      cursor:pointer;user-select:none;
+      font-size:13.5px;line-height:1.45;
+      padding:5px 0;color:var(--text);
+    }
+    .offer-check input[type=checkbox],
+    .offer-check input[type=radio]{
+      appearance:none;-webkit-appearance:none;
+      width:18px;height:18px;flex-shrink:0;margin:0;
+      border:1.5px solid var(--line-strong);
+      background:var(--card);cursor:pointer;position:relative;
+      transition:border-color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease);
+    }
+    .offer-check input[type=checkbox]{border-radius:5px}
+    .offer-check input[type=radio]{border-radius:50%}
+    .offer-check:hover input[type=checkbox],
+    .offer-check:hover input[type=radio]{border-color:var(--accent)}
+    .offer-check input[type=checkbox]:checked,
+    .offer-check input[type=radio]:checked{background:var(--accent);border-color:var(--accent)}
+    .offer-check input[type=checkbox]:checked{
+      background-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3.5 8.5l3 3 6-6.5' stroke='%23162736' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:center;background-size:14px 14px;
+    }
+    .offer-check input[type=radio]:checked::after{
+      content:'';position:absolute;left:50%;top:50%;
+      width:7px;height:7px;border-radius:50%;background:#162736;
+      transform:translate(-50%,-50%);
+    }
+    .offer-check input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+    /* "Vis" toggle i kort-head — samme checkbox, annen label-stil */
+    .offer-toggle{
+      display:inline-flex;align-items:center;gap:9px;cursor:pointer;
+      font-family:var(--font-display);font-size:10px;color:var(--muted);
+      font-weight:700;text-transform:uppercase;letter-spacing:.14em;
+    }
+    .offer-toggle input[type=checkbox]{
+      appearance:none;-webkit-appearance:none;
+      width:32px;height:18px;border-radius:999px;
+      background:var(--line);border:none;margin:0;cursor:pointer;
+      position:relative;transition:background var(--dur-normal) var(--ease);
+    }
+    .offer-toggle input[type=checkbox]::after{
+      content:'';position:absolute;top:2px;left:2px;
+      width:14px;height:14px;border-radius:50%;background:#fff;
+      box-shadow:0 1px 2px rgba(22,39,54,.2);
+      transition:transform var(--dur-normal) var(--ease-spring);
+    }
+    .offer-toggle input[type=checkbox]:checked{background:var(--accent)}
+    .offer-toggle input[type=checkbox]:checked::after{transform:translateX(14px)}
+    .offer-toggle input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+    /* Inputs & textareas */
+    .offer-input,.offer-textarea{
+      width:100%;font-family:var(--font-body);font-size:13.5px;
+      padding:10px 13px;
+      border:1.5px solid var(--line);
+      border-radius:var(--radius-xs);
+      background:var(--card);color:var(--text);
+      transition:border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease);
+    }
+    .offer-input:focus,.offer-textarea:focus{
+      outline:none;border-color:var(--accent);
+      box-shadow:0 0 0 3px var(--accent-glow);
+    }
+    .offer-textarea{min-height:80px;resize:vertical;line-height:1.55;font-family:var(--font-body)}
+    .offer-input.numeric{
+      font-family:var(--font-display);font-size:24px;font-weight:700;
+      padding:10px 14px;letter-spacing:-.02em;
+    }
+    .offer-input.small{font-size:12.5px;padding:7px 10px}
+
+    .offer-line-row{display:flex;gap:8px;align-items:center;margin-top:6px}
+    .offer-line-remove{
+      flex-shrink:0;width:32px;height:32px;
+      border:1px solid transparent;background:transparent;color:var(--muted);
+      border-radius:var(--radius-xs);cursor:pointer;
+      font-size:14px;line-height:1;display:inline-flex;align-items:center;justify-content:center;
+      transition:background var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease);
+    }
+    .offer-line-remove:hover{background:var(--red-soft);color:var(--red);border-color:rgba(224,72,72,.2)}
+
+    .offer-info-pill{
+      margin-top:12px;padding:10px 14px;
+      background:var(--bg-warm);
+      border-left:3px solid var(--accent);
+      border-radius:0 var(--radius-xs) var(--radius-xs) 0;
+      font-size:12.5px;color:var(--muted-strong);line-height:1.55;
+    }
+
+    .offer-add-line{
+      margin-top:14px;background:transparent;
+      border:1.5px dashed var(--line-strong);
+      border-radius:var(--radius-xs);
+      padding:8px 14px;font-size:12.5px;font-weight:600;
+      color:var(--muted-strong);font-family:var(--font-body);cursor:pointer;
+      transition:border-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease);
+    }
+    .offer-add-line:hover{border-color:var(--accent);color:var(--text);background:var(--accent-soft)}
+
+    /* Pris-type "rich radio card" */
+    .offer-pricetype-group{display:flex;flex-direction:column;gap:10px}
+    .offer-pricetype-option{
+      display:flex;align-items:flex-start;gap:14px;
+      padding:14px 16px;
+      border:1.5px solid var(--line);
+      border-radius:var(--radius-sm);
+      background:var(--card);cursor:pointer;user-select:none;
+      transition:border-color var(--dur-normal) var(--ease),background var(--dur-normal) var(--ease),box-shadow var(--dur-normal) var(--ease);
+    }
+    .offer-pricetype-option:hover{border-color:var(--line-strong);background:var(--card-hover)}
+    .offer-pricetype-option input[type=radio]{
+      appearance:none;-webkit-appearance:none;
+      width:18px;height:18px;flex-shrink:0;margin:3px 0 0;
+      border:1.5px solid var(--line-strong);border-radius:50%;
+      background:var(--card);cursor:pointer;position:relative;
+      transition:border-color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease);
+    }
+    .offer-pricetype-option input[type=radio]:checked{background:var(--accent);border-color:var(--accent)}
+    .offer-pricetype-option input[type=radio]:checked::after{
+      content:'';position:absolute;left:50%;top:50%;
+      width:7px;height:7px;border-radius:50%;background:#162736;
+      transform:translate(-50%,-50%);
+    }
+    .offer-pricetype-option.selected{
+      border-color:var(--accent);background:var(--accent-soft);
+      box-shadow:0 0 0 1px var(--accent) inset;
+    }
+    .offer-pricetype-option .pt-body{display:flex;flex-direction:column;gap:3px}
+    .offer-pricetype-option .pt-title{
+      font-family:var(--font-display);font-size:14px;font-weight:700;
+      color:var(--text);letter-spacing:-.01em;line-height:1.3;
+    }
+    .offer-pricetype-option .pt-desc{font-size:12.5px;color:var(--muted);line-height:1.45}
+
+    /* Beregnet tid */
+    .offer-days-total{font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5}
+    .offer-days-total strong{color:var(--text);font-weight:700}
+    .offer-days-row{display:flex;align-items:flex-end;gap:14px}
+    .offer-days-row > label{flex:1;display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+    .offer-days-row .days-unit{font-family:var(--font-display);font-size:13px;color:var(--muted-strong);font-weight:600;padding-bottom:14px}
+    .offer-days-row + .offer-card-hint{margin-top:8px;margin-bottom:0;font-size:11px}
+
+    /* Egne seksjoner */
+    .offer-freesection{
+      background:var(--bg-warm);border:1px solid var(--line);
+      border-radius:var(--radius-sm);padding:12px;
+      display:flex;flex-direction:column;gap:8px;
+    }
+    .offer-freesection-head{display:flex;gap:8px;align-items:center}
+    .offer-freesection-title{
+      flex:1;font-family:var(--font-display);font-weight:700;font-size:13px;
+      padding:8px 11px;border:1.5px solid var(--line);
+      border-radius:var(--radius-xs);background:var(--card);color:var(--text);
+      transition:border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease);
+    }
+    .offer-freesection-title:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+    .offer-freesection-list{display:flex;flex-direction:column;gap:10px}
+
+    /* Postervisning radios (enkel liste) */
+    .offer-postmode-list{display:flex;flex-direction:column;gap:4px}
+    #customPostEditor:not(:empty){margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+
+    /* Responsive — hide thumbnail on narrow */
+    @media (max-width:980px){
+      .offer-editor-scroll{padding:24px 24px 80px}
+      .offer-editor-thumb{display:none}
+    }
 
     /* ── Warning Boxes ── */
     .warning-stack{display:flex;flex-direction:column;gap:6px;margin-top:14px;margin-bottom:14px}
